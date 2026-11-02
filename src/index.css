@@ -1,0 +1,114 @@
+@import "tailwindcss";
+@custom-variant dark (&:where(.dark, .dark *));
+
+:root {
+  --ground: #FFFFFF;
+  --ink: #000000;
+  --surface: #F0F0F0;
+  --navy: #142B4A;
+  --navy-hover: #1D3B63;
+  --navy-light: #E8EDF3;
+  --accent: #142B4A;
+  --accent-hover: #1D3B63;
+  --accent-light: #E8EDF3;
+  --muted: #737373;
+  --rule: #D6D6D6;
+
+  --dp-color-ground: #FFFFFF;
+  --dp-color-ink: #000000;
+  --dp-color-surface: #F0F0F0;
+  --dp-color-accent: #142B4A;
+  --dp-color-accent-hover: #1D3B63;
+  --dp-color-accent-light: #E8EDF3;
+  --dp-color-muted: #737373;
+  --dp-color-rule: #D6D6D6;
+  --dp-color-dark-ground: #0B1422;
+  --dp-color-dark-surface: #111F31;
+  --dp-color-dark-text: #F5F7FA;
+
+  --font-family-host: "Host Grotesk", "SwissMinimalistHost", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+}
+
+.dark {
+  --ground: #0B1422;
+  --ink: #F5F7FA;
+  --surface: #111F31;
+  --navy: #3B82F6;
+  --navy-hover: #60A5FA;
+  --navy-light: #1E293B;
+  --muted: #94A3B8;
+  --red: #EF4444;
+  --rule: #1E293B;
+
+  --dp-color-ground: #0B1422;
+  --dp-color-ink: #F5F7FA;
+  --dp-color-surface: #111F31;
+  --dp-color-accent: #3B82F6;
+  --dp-color-accent-hover: #60A5FA;
+  --dp-color-accent-light: #1E293B;
+  --dp-color-muted: #94A3B8;
+  --dp-color-rule: #1E293B;
+}
+
+body {
+  font-family: var(--font-family-host);
+  background-color: var(--dp-color-ground);
+  color: var(--dp-color-ink);
+  letter-spacing: -0.011em;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Swiss typography utilities */
+.font-display {
+  font-family: var(--font-family-host);
+  font-weight: 750;
+  letter-spacing: -0.035em;
+  line-height: 0.95;
+}
+
+.font-heading {
+  font-family: var(--font-family-host);
+  font-weight: 700;
+  letter-spacing: -0.025em;
+}
+
+.font-mono-numbers {
+  font-family: 'JetBrains Mono', monospace;
+  font-variant-numeric: tabular-nums;
+}
+
+.label {
+  font-size: 0.75rem;
+  line-height: 1rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+}
+
+/* Swiss grid and borders */
+.swiss-rule {
+  border-color: #D6D6D6;
+}
+.dark .swiss-rule {
+  border-color: #1E293B;
+}
+
+/* Square corners discipline */
+* {
+  border-radius: 0 !important;
+}
+
+/* Custom scrollbar for data tables */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: #f0f0f0;
+}
+::-webkit-scrollbar-thumb {
+  background: #c0c0c0;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #142B4A;
+}

@@ -1,0 +1,146 @@
+import React from 'react';
+import { Item, Match } from '../../types';
+import { PortalShell, PageHeader, Link } from '../portal-shell';
+
+interface ItemDetailPageProps {
+  item: Item | null;
+  match: Match | null;
+}
+
+export const ItemDetailPage: React.FC<ItemDetailPageProps> = ({ item, match }) => {
+  if (!item) {
+    return (
+      <PortalShell>
+        <PageHeader
+          eyebrow="MY ITEMS / NOT FOUND"
+          title="ITEM NOT FOUND."
+          copy="The requested report record could not be located in university custody."
+          action={
+            <Link
+              href="/app/items"
+              className="border-2 border-black dark:border-white px-5 py-3 text-xs font-bold uppercase tracking-[.12em] text-black dark:text-white hover:bg-black hover:text-white dark:hover:bg-white dark:hover:text-black transition-colors"
+            >
+              Back to items
+            </Link>
+          }
+        />
+      </PortalShell>
+    );
+  }
+
+  const isMatchedAndApproved = match && match.status === 'APPROVED';
+  const isPendingSubmission = item.type === 'FOUND' && item.submissionStatus === 'PENDING_SUBMISSION';
+
+  return (
+    <PortalShell>
+      {/* Page Header */}
+      <PageHeader
+        eyebrow={`MY ITEMS / ${item.id}`}
+        title={`${item.title.toUpperCase()}.`}
+        copy={`${item.type === 'LOST' ? 'Lost' : 'Found'} item report submitted on ${item.eventDate || '14 October 2026'}.`}
+        action={
+          <Link
+            href="/app/items"
+            className="border-2 border-black dark:border-white px-5 py-3 text-xs font-bold uppercase tracking-[.12em] text-black dark:text-white hover:bg-black hover:text-white dark:hover:bg-white dark:hover:text-black transition-colors"
+          >
+            Back to items
+          </Link>
+        }
+      />
+
+      {/* Grid Layout: Report Details + Next Step */}
+      <div className="grid gap-8 py-6 lg:grid-cols-12">
+        {/* Left Column: Report Details (7 cols) */}
+        <section className="border-2 border-black dark:border-neutral-800 bg-white dark:bg-[#0B1422] p-7 lg:col-span-7">
+          <div className="flex items-center justify-between">
+            <p className="label">REPORT DETAILS</p>
+            <span className="border border-black dark:border-white px-2 py-0.5 text-xs font-bold uppercase text-black dark:text-white">
+              {item.status.replace(/_/g, ' ')}
+            </span>
+          </div>
+
+          {/* Optional item photo */}
+          {item.imageUrl && (
+            <div className="mt-6 border-2 border-black dark:border-neutral-700 overflow-hidden max-h-72">
+              <img
+                src={item.imageUrl}
+                alt={item.title}
+                referrerPolicy="no-referrer"
+                className="w-full h-full object-cover"
+              />
+            </div>
+          )}
+
+          {/* Key Value Metadata */}
+          <dl className="mt-7 grid gap-5 sm:grid-cols-2">
+            {[
+              ['Status', item.status.replace(/_/g, ' ')],
+              ['Category', item.category.replace(/_/g, ' ')],
+              [item.type === 'LOST' ? 'Last seen' : 'Found location', item.location],
+              ['Date', `${item.eventDate || 'Recorded'} ${item.eventTime ? `at ${item.eventTime}` : ''}`],
+              ['Reference', item.id],
+              ['Submitted by', `${item.reporterNameMasked || 'Student'} (${item.reporterRegNo})`],
+            ].map(([label, value]) => (
+              <div key={label}>
+                <dt className="label text-[var(--muted)]">{label}</dt>
+                <dd className="mt-1 text-sm font-bold text-black dark:text-white font-mono-numbers">
+                  {value}
+                </dd>
+              </div>
+            ))}
+          </dl>
+
+          {/* Description */}
+          <div className="mt-8 border-t-2 border-black dark:border-neutral-800 pt-6">
+            <p className="label">DESCRIPTION</p>
+            <p className="mt-3 text-sm leading-7 text-black dark:text-white">
+              {item.description || 'No additional description provided in the original submission.'}
+            </p>
+          </div>
+        </section>
+
+        {/* Right Column: Next Step Aside (5 cols) */}
+        <aside className="h-fit bg-black dark:bg-neutral-900 p-7 text-white lg:col-span-5 border-2 border-black dark:border-neutral-800">
+          {isMatchedAndApproved ? (
+            <>
+              <p className="label text-white/60">COLLECTION STATUS</p>
+              <h2 className="mt-4 text-2xl font-bold tracking-[-.04em]">
+                Ready for Pickup at Desk
+              </h2>
+              <p className="mt-4 text-sm leading-6 text-white/60">
+                Central Security Office (Block 29 Room 102). Present your University ID and verification key to complete custody handover.
+              </p>
+              <div className="mt-6 border-2 border-white p-4 font-mono-numbers text-center font-bold text-xl tracking-wider bg-white/10">
+                {match?.oneTimeHandoverKey || 'KEY-VERIFIED'}
+              </div>
+            </>
+          ) : isPendingSubmission ? (
+            <>
+              <p className="label text-white/60">DESK DROP-OFF REQUIRED</p>
+              <h2 className="mt-4 text-2xl font-bold tracking-[-.04em]">
+                Hand Over Item to Desk
+              </h2>
+              <p className="mt-4 text-sm leading-6 text-white/60">
+                Bring this item to the Central Security Office (Block 29 Room 102) during operating hours to lodge it into verified campus custody.
+              </p>
+            </>
+          ) : (
+            <>
+              <p className="label text-white/60">NEXT STEP</p>
+              <h2 className="mt-4 text-2xl font-bold tracking-[-.04em]">
+                We&apos;ll notify you when there&apos;s an update.
+              </h2>
+              <p className="mt-4 text-sm leading-6 text-white/60">
+                Keep your notification settings on so the Security Office can reach you quickly.
+              </p>
+            </>
+          )}
+
+          <div className="mt-6 pt-6 border-t border-white/20 text-xs text-white/60 font-mono-numbers leading-relaxed">
+            Central Security Desk (Block 29 Room 102) · Mon–Sat 08:00–18:00
+          </div>
+        </aside>
+      </div>
+    </PortalShell>
+  );
+};

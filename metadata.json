@@ -1,0 +1,6 @@
+{
+  "name": "UniTrace — University Lost & Found",
+  "description": "Swiss Minimalist AI-powered university lost and found platform with student report tracking, physical security office desk intake, embedding similarity moderation, and secure OTP handover.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
