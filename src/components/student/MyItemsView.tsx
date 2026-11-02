@@ -1,12 +1,13 @@
 import React, { useState } from 'react';
-import { Item, ItemType } from '../../types';
+import { StudentItem, ItemType } from '../../types';
 import { PageHeader, PortalShell, ActionLink, Link } from '../portal-shell';
 import { useRouter } from '../../lib/router';
 
 interface MyItemsViewProps {
-  items: Item[];
-  studentId: string;
-  onSelectItem?: (item: Item) => void;
+  items: StudentItem[];
+  loading?: boolean;
+  error?: string | null;
+  onSelectItem?: (item: StudentItem) => void;
   onNavigateToReport?: (type: ItemType) => void;
 }
 
@@ -14,13 +15,14 @@ type TabType = 'ALL' | 'LOST' | 'FOUND';
 
 export const MyItemsView: React.FC<MyItemsViewProps> = ({
   items,
-  studentId,
+  loading = false,
+  error = null,
   onSelectItem,
 }) => {
   const { navigate } = useRouter();
   const [activeTab, setActiveTab] = useState<TabType>('ALL');
 
-  const studentItems = items.filter(i => i.reporterId === studentId);
+  const studentItems = items;
 
   const filteredItems = studentItems.filter(item => {
     if (activeTab === 'LOST') return item.type === 'LOST';
@@ -31,7 +33,7 @@ export const MyItemsView: React.FC<MyItemsViewProps> = ({
   const lostCount = studentItems.filter(i => i.type === 'LOST').length;
   const foundCount = studentItems.filter(i => i.type === 'FOUND').length;
 
-  const handleSelect = (item: Item) => {
+  const handleSelect = (item: StudentItem) => {
     if (onSelectItem) {
       onSelectItem(item);
     } else {
@@ -61,8 +63,18 @@ export const MyItemsView: React.FC<MyItemsViewProps> = ({
       />
 
       <div className="py-4 sm:py-6">
+        {loading && (
+          <div className="mt-8 border-2 border-black dark:border-neutral-800 p-8 text-center text-xs font-mono-numbers text-[var(--muted)]">
+            Loading your reports...
+          </div>
+        )}
+        {error && !loading && (
+          <div className="mt-8 border-2 border-red-700 p-8 text-center text-xs text-red-700 dark:text-red-300">
+            {error}
+          </div>
+        )}
         {/* Filter Tabs */}
-        <div className="flex gap-4 sm:gap-6 border-b-2 border-black dark:border-neutral-800 overflow-x-auto whitespace-nowrap -mx-4 px-4 sm:mx-0 sm:px-0 scrollbar-none">
+        {!loading && !error && <div className="flex gap-4 sm:gap-6 border-b-2 border-black dark:border-neutral-800 overflow-x-auto whitespace-nowrap -mx-4 px-4 sm:mx-0 sm:px-0 scrollbar-none">
           <button
             onClick={() => setActiveTab('ALL')}
             className={`pb-3 sm:pb-4 text-xs font-bold uppercase tracking-[.12em] cursor-pointer transition-colors -mb-[2px] ${
@@ -93,10 +105,10 @@ export const MyItemsView: React.FC<MyItemsViewProps> = ({
           >
             Found ({foundCount})
           </button>
-        </div>
+        </div>}
 
         {/* Empty state */}
-        {filteredItems.length === 0 ? (
+        {!loading && !error && (filteredItems.length === 0 ? (
           <div className="mt-8 border-2 border-black dark:border-neutral-800 p-8 sm:p-12 text-center bg-white dark:bg-[#0B1422]">
             <p className="font-bold uppercase tracking-wider text-black dark:text-white text-base">
               No records in this tab
@@ -145,7 +157,7 @@ export const MyItemsView: React.FC<MyItemsViewProps> = ({
                         {item.title}
                       </p>
                       <p className="text-xs text-[var(--muted)] font-mono-numbers truncate mt-0.5">
-                        {item.location} · {item.eventDate || 'Recent'}
+                        {item.location} · {item.eventFrom || 'Recent'}
                       </p>
                     </div>
                   </div>
@@ -197,7 +209,7 @@ export const MyItemsView: React.FC<MyItemsViewProps> = ({
                         </span>
                       </td>
                       <td className="p-4 font-mono-numbers text-xs text-[var(--muted)]">
-                        {item.eventDate || 'Recent'}
+                        {item.eventFrom || 'Recent'}
                       </td>
                       <td className="p-4 text-xs font-bold text-black dark:text-white">
                         {item.location}
@@ -218,7 +230,7 @@ export const MyItemsView: React.FC<MyItemsViewProps> = ({
               </table>
             </div>
           </>
-        )}
+        ))}
       </div>
     </PortalShell>
   );

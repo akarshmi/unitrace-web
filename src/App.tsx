@@ -5,11 +5,13 @@
 
 import React, { useState, useEffect } from 'react';
 import { useRouter, RouterProvider } from './lib/router';
-import { User, Item, Match, NotificationItem, ReceptionRecord, HandoverLog } from './types';
+import { User, Item, Match, StudentItem, StudentMatch, NotificationItem, ReceptionRecord, HandoverLog } from './types';
 import { UniTraceStorage } from './lib/storage';
 import { authApi } from './lib/api/auth.api';
 import { deskApi, DeskStats } from './lib/api/desk.api';
 import { notificationsApi } from './lib/api/notifications.api';
+import { itemsApi } from './lib/api/items.api';
+import { matchesApi } from './lib/api/matches.api';
 
 // Pages
 import { LandingPage } from './components/landing/LandingPage';
@@ -55,10 +57,17 @@ function AppContent() {
 
   // Authenticated User (null if logged out)
   const [currentUser, setCurrentUser] = useState<User | null>(() => UniTraceStorage.getCurrentUser());
+  const [authChecked, setAuthChecked] = useState(false);
 
   // Application Data States
   const [items, setItems] = useState<Item[]>([]);
   const [matches, setMatches] = useState<Match[]>([]);
+  const [studentItems, setStudentItems] = useState<StudentItem[]>([]);
+  const [studentMatches, setStudentMatches] = useState<StudentMatch[]>([]);
+  const [studentItemTotal, setStudentItemTotal] = useState(0);
+  const [studentMatchTotal, setStudentMatchTotal] = useState(0);
+  const [studentDataLoading, setStudentDataLoading] = useState(false);
+  const [studentDataError, setStudentDataError] = useState<string | null>(null);
   const [notifications, setNotifications] = useState<NotificationItem[]>([]);
   const [receptions, setReceptions] = useState<ReceptionRecord[]>([]);
   const [handovers, setHandovers] = useState<HandoverLog[]>([]);
@@ -89,7 +98,52 @@ function AppContent() {
     const loadedNotifs = currentUser ? UniTraceStorage.getNotifications(currentUser.id) : [];
     const loadedReceptions = UniTraceStorage.getReceptions();
     const loadedHandovers = UniTraceStorage.getHandoverLogs();
-    const stats = await deskApi.getDeskStats();
+    const stats = currentUser && currentUser.role !== 'STUDENT'
+      ? await deskApi.getDeskStats()
+      : deskStats;
+
+    if (currentUser?.role === 'STUDENT') {
+      setStudentDataLoading(true);
+      setStudentDataError(null);
+      try {
+        const loadAllPages = async <T,>(
+          loadPage: (page: number) => Promise<{
+            content: T[];
+            totalElements: number;
+            last: boolean;
+          }>
+        ) => {
+          const content: T[] = [];
+          let page = 0;
+          let result = await loadPage(page);
+          content.push(...result.content);
+          while (!result.last) {
+            page += 1;
+            result = await loadPage(page);
+            content.push(...result.content);
+          }
+          return { content, totalElements: result.totalElements };
+        };
+
+        const [studentItemsPage, studentMatchesPage] = await Promise.all([
+          loadAllPages(page => itemsApi.getMyItems(page)),
+          loadAllPages(page => matchesApi.getMyMatches(page)),
+        ]);
+        setStudentItems(studentItemsPage.content);
+        setStudentMatches(studentMatchesPage.content);
+        setStudentItemTotal(studentItemsPage.totalElements);
+        setStudentMatchTotal(studentMatchesPage.totalElements);
+      } catch (error) {
+        setStudentDataError(error instanceof Error ? error.message : 'Unable to load student portal data.');
+      } finally {
+        setStudentDataLoading(false);
+      }
+    } else {
+      setStudentItems([]);
+      setStudentMatches([]);
+      setStudentItemTotal(0);
+      setStudentMatchTotal(0);
+    }
 
     setItems(loadedItems);
     setMatches(loadedMatches);
@@ -102,6 +156,43 @@ function AppContent() {
   useEffect(() => {
     refreshAllData();
   }, [currentUser]);
+
+  useEffect(() => {
+    if (!currentUser || currentUser.role !== 'STUDENT' || !path.startsWith('/app/items/') || !params.id) {
+      return;
+    }
+
+    if (studentItems.some(item => item.id === params.id)) {
+      return;
+    }
+
+    itemsApi.getItemById(params.id)
+      .then(item => setStudentItems(previous => (
+        previous.some(existing => existing.id === item.id) ? previous : [...previous, item]
+      )))
+      .catch(error => {
+        setStudentDataError(error instanceof Error ? error.message : 'Unable to load this item.');
+      });
+  }, [currentUser, path, params.id, studentItems]);
+
+  useEffect(() => {
+    let active = true;
+    authApi.getCurrentUser()
+      .then(user => {
+        if (active) setCurrentUser(user);
+      })
+      .catch(() => {
+        authApi.logout().catch(() => undefined);
+        if (active) setCurrentUser(null);
+      })
+      .finally(() => {
+        if (active) setAuthChecked(true);
+      });
+
+    return () => {
+      active = false;
+    };
+  }, []);
 
   const handleUserChanged = (user: User) => {
     setCurrentUser(user);
@@ -129,8 +220,8 @@ function AppContent() {
     setNotifications(prev => prev.map(n => n.id === id ? { ...n, isRead: true } : n));
   };
 
-  const handleLogout = () => {
-    authApi.logout();
+  const handleLogout = async () => {
+    await authApi.logout();
     setCurrentUser(null);
     navigate('/login');
   };
@@ -174,10 +265,7 @@ function AppContent() {
   if (path === '/register') {
     return (
       <RegisterPage
-        onSuccess={(user) => {
-          handleUserChanged(user);
-          navigate('/app');
-        }}
+        onSuccess={() => navigate('/login')}
         onNavigateToLogin={() => navigate('/login')}
         onNavigateToLanding={() => navigate('/')}
       />
@@ -187,10 +275,7 @@ function AppContent() {
   if (path === '/verify-email') {
     return (
       <VerifyEmailPage
-        onSuccess={(user) => {
-          handleUserChanged(user);
-          navigate('/app');
-        }}
+        onSuccess={() => navigate('/login')}
       />
     );
   }
@@ -205,6 +290,10 @@ function AppContent() {
 
   if (path === '/unauthorized') {
     return <UnauthorizedPage />;
+  }
+
+  if (!authChecked) {
+    return null;
   }
 
   // 3. Security Route Guard: Require authentication for /app or /desk
@@ -258,9 +347,12 @@ function AppContent() {
           {path === '/app' && (
             <StudentDashboard
               currentUser={currentUser}
-              items={items}
-              matches={matches}
-              notifications={notifications}
+              items={studentItems}
+              matches={studentMatches}
+              totalItems={studentItemTotal}
+              totalMatches={studentMatchTotal}
+              loading={studentDataLoading}
+              error={studentDataError}
               onNavigate={(sec) => {
                 if (sec === 'report-lost') navigate('/app/report/lost');
                 else if (sec === 'report-found') navigate('/app/report/found');
@@ -297,8 +389,9 @@ function AppContent() {
 
           {path === '/app/items' && (
             <MyItemsView
-              items={items}
-              studentId={currentUser.id}
+              items={studentItems}
+              loading={studentDataLoading}
+              error={studentDataError}
               onSelectItem={(item) => navigate(`/app/items/${item.id}`)}
               onNavigateToReport={(type) => navigate(type === 'LOST' ? '/app/report/lost' : '/app/report/found')}
             />
@@ -306,16 +399,17 @@ function AppContent() {
 
           {path.startsWith('/app/items/') && (
             <ItemDetailPage
-              item={items.find(i => i.id === params.id) || null}
-              match={matches.find(m => m.lostItemId === params.id || m.foundItemId === params.id) || null}
+              item={studentItems.find(i => i.id === params.id) || null}
+              match={studentMatches.find(m => m.otherItem.id === params.id) || null}
             />
           )}
 
           {path === '/app/matches' && (
             <StudentMatchesView
-              matches={matches}
-              studentId={currentUser.id}
-              onOpenMatchDetail={(m) => navigate(`/app/items/${m.lostItemId}`)}
+              matches={studentMatches}
+              loading={studentDataLoading}
+              error={studentDataError}
+              onOpenMatchDetail={(m) => navigate(`/app/items/${m.otherItem.id}`)}
             />
           )}
 

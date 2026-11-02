@@ -1,10 +1,10 @@
 import React from 'react';
-import { Item, Match } from '../../types';
+import { StudentItem, StudentMatch } from '../../types';
 import { PortalShell, PageHeader, Link } from '../portal-shell';
 
 interface ItemDetailPageProps {
-  item: Item | null;
-  match: Match | null;
+  item: StudentItem | null;
+  match: StudentMatch | null;
 }
 
 export const ItemDetailPage: React.FC<ItemDetailPageProps> = ({ item, match }) => {
@@ -29,7 +29,7 @@ export const ItemDetailPage: React.FC<ItemDetailPageProps> = ({ item, match }) =
   }
 
   const isMatchedAndApproved = match && match.status === 'APPROVED';
-  const isPendingSubmission = item.type === 'FOUND' && item.submissionStatus === 'PENDING_SUBMISSION';
+  const isPendingSubmission = item.type === 'FOUND' && !item.deskReceivedAt;
 
   return (
     <PortalShell>
@@ -37,7 +37,7 @@ export const ItemDetailPage: React.FC<ItemDetailPageProps> = ({ item, match }) =
       <PageHeader
         eyebrow={`MY ITEMS / ${item.id}`}
         title={`${item.title.toUpperCase()}.`}
-        copy={`${item.type === 'LOST' ? 'Lost' : 'Found'} item report submitted on ${item.eventDate || '14 October 2026'}.`}
+        copy={`${item.type === 'LOST' ? 'Lost' : 'Found'} item report submitted on ${item.createdAt}.`}
         action={
           <Link
             href="/app/items"
@@ -75,11 +75,11 @@ export const ItemDetailPage: React.FC<ItemDetailPageProps> = ({ item, match }) =
           <dl className="mt-7 grid gap-5 sm:grid-cols-2">
             {[
               ['Status', item.status.replace(/_/g, ' ')],
-              ['Category', item.category.replace(/_/g, ' ')],
+              ['Category', 'Not provided by backend'],
               [item.type === 'LOST' ? 'Last seen' : 'Found location', item.location],
-              ['Date', `${item.eventDate || 'Recorded'} ${item.eventTime ? `at ${item.eventTime}` : ''}`],
+              ['Date', item.eventFrom || item.eventTo || 'Recorded'],
               ['Reference', item.id],
-              ['Submitted by', `${item.reporterNameMasked || 'Student'} (${item.reporterRegNo})`],
+              ['Submitted by', 'You'],
             ].map(([label, value]) => (
               <div key={label}>
                 <dt className="label text-[var(--muted)]">{label}</dt>
@@ -111,7 +111,7 @@ export const ItemDetailPage: React.FC<ItemDetailPageProps> = ({ item, match }) =
                 Central Security Office (Block 29 Room 102). Present your University ID and verification key to complete custody handover.
               </p>
               <div className="mt-6 border-2 border-white p-4 font-mono-numbers text-center font-bold text-xl tracking-wider bg-white/10">
-                {match?.oneTimeHandoverKey || 'KEY-VERIFIED'}
+                  {match?.handoverKeyExpiresAt ? `Expires ${match.handoverKeyExpiresAt}` : 'Issued by email'}
               </div>
             </>
           ) : isPendingSubmission ? (

@@ -1,21 +1,20 @@
 import React, { useState, useEffect } from 'react';
 import { useRouter, Link } from '../../lib/router';
 import { authApi } from '../../lib/api/auth.api';
-import { User } from '../../types';
 import { Mail, Check, RotateCcw, ArrowLeft, AlertCircle } from 'lucide-react';
 
 interface VerifyEmailPageProps {
-  onSuccess: (user: User) => void;
+  onSuccess: () => void;
 }
 
 export const VerifyEmailPage: React.FC<VerifyEmailPageProps> = ({ onSuccess }) => {
   const { navigate } = useRouter();
-  const [email, setEmail] = useState('student@lpu.in');
+  const [email, setEmail] = useState('');
   const [otp, setOtp] = useState('');
   const [countdown, setCountdown] = useState(60);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [info, setInfo] = useState<string | null>('Demonstration verification code: 482910');
+  const [info, setInfo] = useState<string | null>(null);
 
   useEffect(() => {
     if (countdown > 0) {
@@ -30,8 +29,9 @@ export const VerifyEmailPage: React.FC<VerifyEmailPageProps> = ({ onSuccess }) =
     setLoading(true);
     try {
       const res = await authApi.verifyOtp({ email, otp });
-      onSuccess(res.user);
-      navigate('/app');
+      setInfo(res.message);
+      onSuccess();
+      navigate('/login');
     } catch (err: any) {
       setError(err.message || 'Invalid or expired OTP code.');
     } finally {
@@ -42,7 +42,7 @@ export const VerifyEmailPage: React.FC<VerifyEmailPageProps> = ({ onSuccess }) =
   const handleResend = () => {
     if (countdown > 0) return;
     setCountdown(60);
-    setInfo('New code 482910 dispatched to your university inbox.');
+    setInfo('Please request a new registration if your verification code has expired.');
   };
 
   return (
@@ -112,7 +112,7 @@ export const VerifyEmailPage: React.FC<VerifyEmailPageProps> = ({ onSuccess }) =
                 maxLength={6}
                 value={otp}
                 onChange={(e) => setOtp(e.target.value)}
-                placeholder="482910"
+                placeholder="Enter OTP"
                 className="w-full py-3 text-center text-3xl font-mono-numbers tracking-widest border-2 border-black dark:border-neutral-700 dark:bg-slate-900 focus:outline-none focus:border-[var(--navy)]"
               />
             </div>

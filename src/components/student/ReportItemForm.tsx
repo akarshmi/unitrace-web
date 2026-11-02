@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { ItemCategory, ItemType } from '../../types';
+import React, { useEffect, useState } from 'react';
+import { ItemType } from '../../types';
 import { itemsApi } from '../../lib/api/items.api';
 import { 
   Upload, 
@@ -16,16 +16,6 @@ interface ReportItemFormProps {
   onSuccess: () => void;
   onCancel: () => void;
 }
-
-const CATEGORIES: { value: ItemCategory; label: string }[] = [
-  { value: 'ELECTRONICS', label: 'Electronics (Laptops, Phones, Headphones)' },
-  { value: 'DOCUMENTS_AND_CARDS', label: 'Documents, IDs & University Cards' },
-  { value: 'BAGS_AND_WALLETS', label: 'Bags, Backpacks & Wallets' },
-  { value: 'KEYS', label: 'Keys & Keycards' },
-  { value: 'BOOKS_AND_STATIONERY', label: 'Books, Textbooks & Stationery' },
-  { value: 'ACCESSORIES', label: 'Watches, Jewelry & Accessories' },
-  { value: 'OTHER', label: 'Other Campus Belongings' },
-];
 
 const PRESET_LOCATIONS = [
   'Central Library Level 1 - Reference Desk',
@@ -49,29 +39,36 @@ export const ReportItemForm: React.FC<ReportItemFormProps> = ({
   const isLost = type === 'LOST';
 
   const [title, setTitle] = useState('');
-  const [category, setCategory] = useState<ItemCategory>('ELECTRONICS');
   const [description, setDescription] = useState('');
   const [location, setLocation] = useState(PRESET_LOCATIONS[0]);
   const [customLocation, setCustomLocation] = useState('');
   const [eventDate, setEventDate] = useState(new Date().toISOString().slice(0, 10));
   const [eventTime, setEventTime] = useState('11:00');
   const [imagePreview, setImagePreview] = useState<string | null>(null);
+  const [imageFile, setImageFile] = useState<File | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [submittedItemCode, setSubmittedItemCode] = useState<string | null>(null);
 
+  useEffect(() => () => {
+    if (imagePreview) URL.revokeObjectURL(imagePreview);
+  }, [imagePreview]);
+
   const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
+      const allowedTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
+      if (!allowedTypes.includes(file.type)) {
+        setError('Only JPEG, PNG, GIF, or WEBP images are allowed.');
+        return;
+      }
       if (file.size > 5 * 1024 * 1024) {
         setError('Image file must be under 5MB.');
         return;
       }
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        setImagePreview(reader.result as string);
-      };
-      reader.readAsDataURL(file);
+      setError(null);
+      setImageFile(file);
+      setImagePreview(URL.createObjectURL(file));
     }
   };
 
@@ -83,30 +80,52 @@ export const ReportItemForm: React.FC<ReportItemFormProps> = ({
       setError('Item title is required.');
       return;
     }
+    if (title.trim().length > 150) {
+      setError('Item title must be 150 characters or fewer.');
+      return;
+    }
 
     if (!description.trim() || description.length < 10) {
       setError('Please provide a descriptive explanation (at least 10 characters).');
       return;
     }
+    if (description.trim().length > 1000) {
+      setError('Description must be 1000 characters or fewer.');
+      return;
+    }
+
+    if (!imageFile) {
+      setError('A valid item image is required.');
+      return;
+    }
 
     const finalLocation = customLocation.trim() || location;
+    if (finalLocation.length > 255) {
+      setError('Location must be 255 characters or fewer.');
+      return;
+    }
+    const eventDateTime = new Date(`${eventDate}T${eventTime}:00`);
+    if (Number.isNaN(eventDateTime.getTime()) || eventDateTime.getTime() > Date.now()) {
+      setError('Event date and time must be valid and not in the future.');
+      return;
+    }
+    const eventInstant = eventDateTime.toISOString();
 
     setSubmitting(true);
     try {
       const created = await itemsApi.reportItem({
         title,
         type,
-        category,
         description,
         location: finalLocation,
-        eventDate,
-        eventTime,
-        imageUrl: imagePreview || undefined,
+        eventFrom: eventInstant,
+        eventTo: eventInstant,
+        image: imageFile,
       });
 
       setSubmittedItemCode(created.id);
-    } catch (err: any) {
-      setError(err.message || 'Failed to submit report. Please try again.');
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to submit report. Please try again.');
       setSubmitting(false);
     }
   };
@@ -188,9 +207,8 @@ export const ReportItemForm: React.FC<ReportItemFormProps> = ({
 
       <form onSubmit={handleSubmit} className="border-2 border-black dark:border-neutral-700 bg-white dark:bg-[#0B1422] p-6 space-y-6">
         
-        {/* Title & Category Row */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div className="space-y-1">
+        {/* Title */}
+        <div className="space-y-1">
             <label className="block text-xs font-bold uppercase tracking-[0.12em] text-black dark:text-white">
               Item Title *
             </label>
@@ -202,22 +220,6 @@ export const ReportItemForm: React.FC<ReportItemFormProps> = ({
               placeholder="e.g. Apple MacBook Air M2 (Space Gray)"
               className="w-full px-3 py-2.5 text-sm border-2 border-black dark:border-neutral-700 bg-white dark:bg-slate-900 text-black dark:text-white focus:outline-none focus:border-[var(--navy)] font-mono-numbers"
             />
-          </div>
-
-          <div className="space-y-1">
-            <label className="block text-xs font-bold uppercase tracking-[0.12em] text-black dark:text-white">
-              Category *
-            </label>
-            <select
-              value={category}
-              onChange={(e) => setCategory(e.target.value as ItemCategory)}
-              className="w-full px-3 py-2.5 text-sm border-2 border-black dark:border-neutral-700 bg-white dark:bg-slate-900 text-black dark:text-white focus:outline-none focus:border-[var(--navy)] font-mono-numbers"
-            >
-              {CATEGORIES.map(c => (
-                <option key={c.value} value={c.value}>{c.label}</option>
-              ))}
-            </select>
-          </div>
         </div>
 
         {/* Description */}
@@ -301,7 +303,7 @@ export const ReportItemForm: React.FC<ReportItemFormProps> = ({
         {/* Photograph Upload */}
         <div className="space-y-2">
           <label className="block text-xs font-bold uppercase tracking-[0.12em] text-black dark:text-white">
-            Photograph (Optional)
+            Photograph *
           </label>
           
           <div className="border-2 border-dashed border-black dark:border-neutral-700 p-6 flex flex-col items-center justify-center bg-[var(--surface)] dark:bg-slate-900/50">
@@ -314,7 +316,10 @@ export const ReportItemForm: React.FC<ReportItemFormProps> = ({
                 />
                 <button
                   type="button"
-                  onClick={() => setImagePreview(null)}
+                  onClick={() => {
+                    setImagePreview(null);
+                    setImageFile(null);
+                  }}
                   className="text-xs text-black dark:text-white underline font-bold uppercase tracking-wider cursor-pointer"
                 >
                   Remove Photo
@@ -327,7 +332,7 @@ export const ReportItemForm: React.FC<ReportItemFormProps> = ({
                   Click to attach image file
                 </span>
                 <span className="text-[11px] text-[var(--muted)] mt-1 font-mono-numbers">
-                  JPG or PNG up to 5MB
+                  JPG, PNG, GIF, or WEBP up to 5MB
                 </span>
                 <input
                   type="file"

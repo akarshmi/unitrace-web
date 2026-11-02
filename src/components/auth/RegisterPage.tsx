@@ -1,11 +1,10 @@
 import React, { useState } from 'react';
-import { User } from '../../types';
 import { authApi } from '../../lib/api/auth.api';
-import { AlertCircle, RotateCcw, CheckCircle2 } from 'lucide-react';
+import { AlertCircle, CheckCircle2 } from 'lucide-react';
 import Grainient from '../ui/Grainient';
 
 interface RegisterPageProps {
-  onSuccess: (user: User) => void;
+  onSuccess: () => void;
   onNavigateToLogin: () => void;
   onNavigateToLanding: () => void;
 }
@@ -19,6 +18,7 @@ export const RegisterPage: React.FC<RegisterPageProps> = ({
   const [fullName, setFullName] = useState('');
   const [regNo, setRegNo] = useState('');
   const [email, setEmail] = useState('');
+  const [phoneNumber, setPhoneNumber] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [otpCode, setOtpCode] = useState('');
@@ -46,6 +46,7 @@ export const RegisterPage: React.FC<RegisterPageProps> = ({
         fullName,
         registrationNumber: regNo,
         email,
+        phoneNumber,
         password,
       });
       setInfoMsg(res.message);
@@ -63,7 +64,8 @@ export const RegisterPage: React.FC<RegisterPageProps> = ({
     setLoading(true);
     try {
       const res = await authApi.verifyOtp({ email, otp: otpCode });
-      onSuccess(res.user);
+      setInfoMsg(res.message);
+      onSuccess();
     } catch (err: any) {
       setError(err.message || 'Invalid code.');
     } finally {
@@ -166,6 +168,22 @@ export const RegisterPage: React.FC<RegisterPageProps> = ({
 
               <label className="block">
                 <span className="text-xs font-bold uppercase tracking-[0.12em] mb-1.5 block">
+                  Phone Number (10 digits)
+                </span>
+                <input
+                  type="tel"
+                  required
+                  pattern="[0-9]{10}"
+                  maxLength={10}
+                  value={phoneNumber}
+                  onChange={(e) => setPhoneNumber(e.target.value.replace(/\D/g, ''))}
+                  placeholder="e.g. 9876543210"
+                  className="h-12 w-full border-2 border-black dark:border-neutral-700 bg-white dark:bg-slate-900 px-3 text-sm outline-none focus:ring-2 focus:ring-black dark:focus:ring-white font-mono-numbers"
+                />
+              </label>
+
+              <label className="block">
+                <span className="text-xs font-bold uppercase tracking-[0.12em] mb-1.5 block">
                   University Reg. Number
                 </span>
                 <input
@@ -232,28 +250,6 @@ export const RegisterPage: React.FC<RegisterPageProps> = ({
             </form>
           ) : (
             <form onSubmit={handleVerifyOtp} className="mt-8 space-y-5">
-              <div className="border-2 border-black dark:border-neutral-700 p-4 bg-neutral-50 dark:bg-slate-900/60 flex items-center justify-between">
-                <div>
-                  <span className="text-[10px] font-bold uppercase tracking-wider text-[var(--navy)] font-mono-numbers block">
-                    Demonstration Code
-                  </span>
-                  <span className="text-xl font-bold font-mono-numbers">
-                    482910
-                  </span>
-                </div>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setOtpCode('482910');
-                    setInfoMsg('Code applied.');
-                  }}
-                  className="text-xs text-[var(--navy)] font-bold flex items-center gap-1 cursor-pointer underline"
-                >
-                  <RotateCcw className="w-3.5 h-3.5" />
-                  <span>Auto-fill</span>
-                </button>
-              </div>
-
               <label className="block">
                 <span className="text-xs font-bold uppercase tracking-[0.12em] mb-2 block text-center">
                   6-Digit OTP Code
@@ -264,7 +260,7 @@ export const RegisterPage: React.FC<RegisterPageProps> = ({
                   maxLength={6}
                   value={otpCode}
                   onChange={(e) => setOtpCode(e.target.value)}
-                  placeholder="482910"
+                  placeholder="Enter OTP"
                   className="h-14 w-full text-center text-3xl font-mono-numbers tracking-widest border-2 border-black dark:border-neutral-700 bg-white dark:bg-slate-900 outline-none focus:ring-2 focus:ring-black dark:focus:ring-white"
                 />
               </label>
@@ -274,7 +270,7 @@ export const RegisterPage: React.FC<RegisterPageProps> = ({
                 disabled={loading}
                 className="block w-full bg-black hover:bg-neutral-800 px-5 py-4 text-center text-xs font-bold uppercase tracking-[.12em] text-white transition-colors cursor-pointer disabled:opacity-50"
               >
-                {loading ? 'Verifying...' : 'Verify & Enter Portal'}
+                {loading ? 'Verifying...' : 'Verify & Continue'}
               </button>
             </form>
           )}

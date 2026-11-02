@@ -26,49 +26,14 @@ export interface PhysicalIntakePayload {
 
 export const deskApi = {
   async getDeskStats(): Promise<DeskStats> {
-    try {
-      return await apiRequest<DeskStats>('/desk/statistics');
-    } catch {
-      const items = UniTraceStorage.getItems();
-      const matches = UniTraceStorage.getMatches();
-      const handovers = UniTraceStorage.getHandoverLogs();
-      const receptions = UniTraceStorage.getReceptions();
-
-      const totalReports = items.length;
-      const pendingPhysicalSubmissions = items.filter(
-        i => i.type === 'FOUND' && i.submissionStatus === 'PENDING_SUBMISSION'
-      ).length;
-      const receivedItems = items.filter(
-        i => i.submissionStatus === 'RECEIVED_BY_DESK'
-      ).length;
-      const pendingAiMatches = matches.filter(m => m.status === 'PENDING_REVIEW').length;
-      const approvedMatches = matches.filter(m => m.status === 'APPROVED').length;
-      const pendingHandovers = matches.filter(m => m.status === 'APPROVED').length;
-      const completedHandovers = handovers.filter(h => h.status === 'SUCCESS').length;
-      const todaySubmissions = receptions.length;
-
-      return {
-        totalReports,
-        pendingPhysicalSubmissions,
-        receivedItems,
-        pendingAiMatches,
-        approvedMatches,
-        pendingHandovers,
-        completedHandovers,
-        todaySubmissions,
-      };
-    }
+    return await apiRequest<DeskStats>('/desk/statistics');
   },
 
   async receivePhysicalItem(payload: PhysicalIntakePayload): Promise<ReceptionRecord> {
-    try {
-      return await apiRequest<ReceptionRecord>('/desk/submissions/receive', {
-        method: 'POST',
-        body: JSON.stringify(payload),
-      });
-    } catch {
-      return UniTraceStorage.recordPhysicalReception(payload);
-    }
+    return await apiRequest<ReceptionRecord>('/desk/submissions/receive', {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    });
   },
 
   async getReceptionHistory(): Promise<ReceptionRecord[]> {
@@ -76,25 +41,17 @@ export const deskApi = {
   },
 
   async approveMatch(matchId: string, remarks: string, moderator: User) {
-    try {
-      return await apiRequest(`/desk/matches/${matchId}/approve`, {
-        method: 'POST',
-        body: JSON.stringify({ remarks }),
-      });
-    } catch {
-      return UniTraceStorage.approveMatch(matchId, moderator.id, remarks);
-    }
+    return await apiRequest(`/desk/matches/${matchId}/approve`, {
+      method: 'POST',
+      body: JSON.stringify({ remarks }),
+    });
   },
 
   async rejectMatch(matchId: string, remarks: string, moderator: User) {
-    try {
-      return await apiRequest(`/desk/matches/${matchId}/reject`, {
-        method: 'POST',
-        body: JSON.stringify({ remarks }),
-      });
-    } catch {
-      return UniTraceStorage.rejectMatch(matchId, moderator.id, remarks);
-    }
+    return await apiRequest(`/desk/matches/${matchId}/reject`, {
+      method: 'POST',
+      body: JSON.stringify({ remarks }),
+    });
   },
 
   async verifyHandover(
@@ -104,17 +61,13 @@ export const deskApi = {
     officer: User,
     deskRemarks: string
   ) {
-    try {
-      return await apiRequest<{ success: boolean; message: string; remainingAttempts?: number; isLocked?: boolean }>(
-        `/desk/handovers/${matchId}/verify`,
-        {
-          method: 'POST',
-          body: JSON.stringify({ claimantRegNo, keyEntered, deskRemarks }),
-        }
-      );
-    } catch {
-      return UniTraceStorage.verifyHandover(matchId, claimantRegNo, keyEntered, officer, deskRemarks);
-    }
+    return await apiRequest<{ success: boolean; message: string; remainingAttempts?: number; isLocked?: boolean }>(
+      `/desk/handovers/${matchId}/verify`,
+      {
+        method: 'POST',
+        body: JSON.stringify({ claimantRegNo, keyEntered, deskRemarks }),
+      }
+    );
   },
 
   async reissueHandoverKey(matchId: string) {

@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { User } from '../../types';
 import { authApi } from '../../lib/api/auth.api';
-import { AlertCircle, GraduationCap, Shield } from 'lucide-react';
+import { AlertCircle } from 'lucide-react';
 import Grainient from '../ui/Grainient';
 
 interface LoginPageProps {
@@ -15,8 +15,8 @@ export const LoginPage: React.FC<LoginPageProps> = ({
   onNavigateToRegister,
   onNavigateToLanding,
 }) => {
-  const [email, setEmail] = useState('akarsh.12204598@lpu.in');
-  const [password, setPassword] = useState('password123');
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -36,17 +36,6 @@ export const LoginPage: React.FC<LoginPageProps> = ({
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     await performLogin(email, password);
-  };
-
-  const handleSelectProfile = (profile: 'STUDENT' | 'DESK') => {
-    setError(null);
-    if (profile === 'STUDENT') {
-      setEmail('akarsh.12204598@lpu.in');
-      setPassword('password123');
-    } else {
-      setEmail('security.desk@lpu.in');
-      setPassword('password123');
-    }
   };
 
   return (
@@ -147,41 +136,6 @@ export const LoginPage: React.FC<LoginPageProps> = ({
                 className="h-12 w-full border-2 border-black dark:border-neutral-700 bg-white dark:bg-slate-900 px-3 text-sm outline-none focus:ring-2 focus:ring-black dark:focus:ring-white font-mono-numbers"
               />
             </label>
-
-            {/* Quick Profile Selectors */}
-            <div className="pt-1">
-              <div className="flex items-center justify-between text-xs mb-2">
-                <span className="text-neutral-500 font-mono-numbers uppercase text-[11px] font-bold">
-                  Quick Profiles
-                </span>
-              </div>
-              <div className="grid grid-cols-2 gap-2">
-                <button
-                  type="button"
-                  onClick={() => handleSelectProfile('STUDENT')}
-                  className={`border-2 p-2.5 text-left text-xs font-bold flex items-center gap-2 cursor-pointer transition-colors ${
-                    email === 'akarsh.12204598@lpu.in'
-                      ? 'border-black bg-neutral-100 dark:bg-slate-800'
-                      : 'border-neutral-300 dark:border-neutral-700 hover:border-black'
-                  }`}
-                >
-                  <GraduationCap className="size-4 shrink-0 text-[var(--navy)]" />
-                  <span className="truncate">Student</span>
-                </button>
-                <button
-                  type="button"
-                  onClick={() => handleSelectProfile('DESK')}
-                  className={`border-2 p-2.5 text-left text-xs font-bold flex items-center gap-2 cursor-pointer transition-colors ${
-                    email === 'security.desk@lpu.in'
-                      ? 'border-black bg-neutral-100 dark:bg-slate-800'
-                      : 'border-neutral-300 dark:border-neutral-700 hover:border-black'
-                  }`}
-                >
-                  <Shield className="size-4 shrink-0 text-[var(--navy)]" />
-                  <span className="truncate">Security Desk</span>
-                </button>
-              </div>
-            </div>
 
             <button
               type="submit"

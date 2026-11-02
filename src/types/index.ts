@@ -54,6 +54,45 @@ export interface Item {
   updatedAt: string;
 }
 
+export interface StudentItem {
+  id: string;
+  title: string;
+  type: ItemType;
+  description: string;
+  imageUrl: string;
+  location: string;
+  status: ItemStatus;
+  eventFrom: string | null;
+  eventTo: string | null;
+  deskReceivedAt: string | null;
+  createdAt: string;
+}
+
+export interface StudentMatchItem {
+  id: string;
+  title: string;
+  type: ItemType;
+  description: string;
+  imageUrl: string;
+  location: string;
+  status: ItemStatus;
+  eventFrom: string | null;
+  eventTo: string | null;
+  receivedAtDesk: boolean;
+  dropOffDeadline: string | null;
+}
+
+export interface StudentMatch {
+  id: string;
+  status: string;
+  yourRole: 'LOST_OWNER' | 'FOUND_OWNER';
+  confidencePercent: number;
+  otherItem: StudentMatchItem;
+  handoverKeyExpiresAt: string | null;
+  nextStep: string;
+  createdAt: string;
+}
+
 export type MatchStatus = 'PENDING_REVIEW' | 'APPROVED' | 'REJECTED' | 'CLAIMED';
 
 export interface SimilarityBreakdown {

@@ -1,5 +1,5 @@
 import React from 'react';
-import { User, Item, Match, NotificationItem } from '../../types';
+import { User, StudentItem, StudentMatch } from '../../types';
 import { 
   PortalShell, 
   PageHeader, 
@@ -12,32 +12,30 @@ import { useRouter } from '../../lib/router';
 
 interface StudentDashboardProps {
   currentUser: User;
-  items: Item[];
-  matches: Match[];
-  notifications: NotificationItem[];
+  items: StudentItem[];
+  matches: StudentMatch[];
+  totalItems: number;
+  totalMatches: number;
+  loading?: boolean;
+  error?: string | null;
   onNavigate?: (section: any, itemId?: string) => void;
-  onOpenItemDetail?: (item: Item) => void;
+  onOpenItemDetail?: (item: StudentItem) => void;
 }
 
 export const StudentDashboard: React.FC<StudentDashboardProps> = ({
   currentUser,
   items,
   matches,
-  notifications,
+  totalItems,
+  totalMatches,
+  loading = false,
+  error = null,
   onNavigate,
   onOpenItemDetail,
 }) => {
   const { navigate } = useRouter();
 
-  const myItems = items.filter(i => i.reporterId === currentUser.id);
-  const activeReports = myItems.filter(i => i.status === 'OPEN' || i.status === 'MATCHED').length;
-  const awaitingReview = myItems.filter(i => i.status === 'OPEN').length;
-  const pendingSubmissions = myItems.filter(
-    i => i.type === 'FOUND' && i.submissionStatus === 'PENDING_SUBMISSION'
-  ).length;
-
-  const userMatches = matches.filter(m => m.lostItem.reporterId === currentUser.id);
-  const approvedMatches = userMatches.filter(m => m.status === 'APPROVED');
+  const approvedMatches = matches.filter(m => m.status === 'APPROVED');
 
   const firstName = currentUser.fullName ? currentUser.fullName.split(' ')[0].toUpperCase() : 'STUDENT';
   const hour = new Date().getHours();
@@ -60,8 +58,8 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
   approvedMatches.forEach(m => {
     candidateActivities.push({
       id: `match-${m.id}`,
-      title: `Ready for collection · ${m.lostItem.title}`,
-      meta: `Security Desk (Room 102) · Key: ${m.oneTimeHandoverKey || 'KEY-PENDING'}`,
+      title: `Ready for collection · ${m.otherItem.title}`,
+      meta: `Security Desk · ${m.nextStep || 'Follow the instructions sent to you.'}`,
       badge: 'APPROVED',
       onClick: () => {
         if (onNavigate) onNavigate('matches');
@@ -70,11 +68,11 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
     });
   });
 
-  myItems.slice(0, 2).forEach(item => {
+  items.slice(0, 2).forEach(item => {
     candidateActivities.push({
       id: `item-${item.id}`,
       title: `${item.title} report created`,
-      meta: `${item.eventDate || 'Today'} · ${item.type === 'LOST' ? 'Lost item' : 'Found item'} · ${item.location}`,
+      meta: `${item.eventFrom || 'Recent'} · ${item.type === 'LOST' ? 'Lost item' : 'Found item'} · ${item.location}`,
       badge: item.type,
       onClick: () => {
         if (onOpenItemDetail) onOpenItemDetail(item);
@@ -83,43 +81,7 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
     });
   });
 
-  notifications.slice(0, 2).forEach(notif => {
-    candidateActivities.push({
-      id: `notif-${notif.id}`,
-      title: notif.title,
-      meta: `${notif.message} · Notification`,
-      onClick: () => {
-        if (onNavigate) onNavigate('notifications');
-        else navigate('/app/notifications');
-      },
-    });
-  });
-
-  // Keep strictly 2 rows so Recent Activity and the "Next Step" aside stay balanced in the same sort
   const displayActivities = candidateActivities.slice(0, 2);
-  if (displayActivities.length === 1) {
-    displayActivities.push({
-      id: 'inbox-clear',
-      title: 'No new notifications',
-      meta: 'Your inbox is clear',
-      onClick: () => navigate('/app/notifications'),
-    });
-  } else if (displayActivities.length === 0) {
-    displayActivities.push(
-      {
-        id: 'sample-report',
-        title: 'Water bottle report created',
-        meta: 'Today · Lost item',
-        onClick: () => navigate('/app/items'),
-      },
-      {
-        id: 'inbox-clear',
-        title: 'No new notifications',
-        meta: 'Your inbox is clear',
-        onClick: () => navigate('/app/notifications'),
-      }
-    );
-  }
 
   return (
     <PortalShell>
@@ -142,12 +104,13 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
         }
       />
 
+      {error && <div className="border-2 border-red-700 p-4 text-xs text-red-700 dark:text-red-300">{error}</div>}
       <StatGrid
         stats={[
-          [formatStat(activeReports), 'Active reports'],
-          [formatStat(awaitingReview), 'Awaiting review'],
-          [formatStat(pendingSubmissions), 'Pending submissions'],
-          [formatStat(approvedMatches.length), 'Approved matches'],
+          [loading ? '...' : formatStat(totalItems), 'My reports'],
+          ['—', 'Awaiting review'],
+          ['—', 'Pending submissions'],
+          [loading ? '...' : formatStat(totalMatches), 'Visible matches'],
         ]}
       />
 
@@ -156,7 +119,9 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
         <div className="lg:col-span-8">
           <p className="label">RECENT ACTIVITY</p>
           <div className="mt-5 divide-y-2 divide-black dark:divide-neutral-800 border-y-2 border-black dark:border-neutral-800">
-            {displayActivities.map(activity => (
+            {displayActivities.length === 0 ? (
+              <div className="py-5 text-sm text-[var(--muted)]">No recent student activity available.</div>
+            ) : displayActivities.map(activity => (
               <Row
                 key={activity.id}
                 title={activity.title}

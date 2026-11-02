@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Match } from '../../types';
+import { StudentMatch } from '../../types';
 import { StatusBadge } from '../ui/StatusBadge';
 import { 
   Sparkles, 
@@ -12,19 +12,22 @@ import {
 } from 'lucide-react';
 
 interface StudentMatchesViewProps {
-  matches: Match[];
-  studentId: string;
-  onOpenMatchDetail?: (match: Match) => void;
+  matches: StudentMatch[];
+  loading?: boolean;
+  error?: string | null;
+  onOpenMatchDetail?: (match: StudentMatch) => void;
 }
 
 export const StudentMatchesView: React.FC<StudentMatchesViewProps> = ({
   matches,
-  studentId,
+  loading = false,
+  error = null,
 }) => {
-  const studentMatches = matches.filter(
-    m => m.lostItem.reporterId === studentId || m.foundItem.reporterId === studentId
-  );
-  const [selectedMatch, setSelectedMatch] = useState<Match | null>(studentMatches[0] || null);
+  const studentMatches = matches;
+  const [selectedMatch, setSelectedMatch] = useState<StudentMatch | null>(studentMatches[0] || null);
+  React.useEffect(() => {
+    setSelectedMatch(studentMatches[0] || null);
+  }, [studentMatches]);
 
   return (
     <div className="space-y-6">
@@ -41,7 +44,15 @@ export const StudentMatchesView: React.FC<StudentMatchesViewProps> = ({
         </p>
       </div>
 
-      {studentMatches.length === 0 ? (
+      {loading ? (
+        <div className="border-2 border-black dark:border-neutral-800 p-12 text-center text-xs font-mono-numbers text-[var(--muted)]">
+          Loading your matches...
+        </div>
+      ) : error ? (
+        <div className="border-2 border-red-700 p-12 text-center text-xs text-red-700 dark:text-red-300">
+          {error}
+        </div>
+      ) : studentMatches.length === 0 ? (
         <div className="border-2 border-black dark:border-neutral-800 p-12 text-center bg-white dark:bg-[#0B1422]">
           <Sparkles className="w-8 h-8 text-[var(--navy)] mx-auto mb-3" />
           <h3 className="text-sm font-bold uppercase tracking-wider text-black dark:text-white">
@@ -82,29 +93,23 @@ export const StudentMatchesView: React.FC<StudentMatchesViewProps> = ({
                   </div>
 
                   <h3 className="text-sm font-bold text-black dark:text-white line-clamp-1 mb-2">
-                    {match.lostItem.title}
+                    {match.otherItem.title}
                   </h3>
 
                   <div className="flex items-center gap-3">
                     <div className="flex -space-x-2 shrink-0">
-                      <img
-                        src={match.lostItem.imageUrl}
-                        alt="Lost"
+                      {match.otherItem.imageUrl && <img
+                        src={match.otherItem.imageUrl}
+                        alt={match.otherItem.title}
                         referrerPolicy="no-referrer"
                         className="w-12 h-12 object-cover border-2 border-black"
-                      />
-                      <img
-                        src={match.foundItem.imageUrl}
-                        alt="Found"
-                        referrerPolicy="no-referrer"
-                        className="w-12 h-12 object-cover border-2 border-black"
-                      />
+                      />}
                     </div>
 
                     <div className="space-y-0.5 text-xs font-mono-numbers">
                       <div className="text-[var(--muted)]">Match Confidence</div>
                       <div className="font-bold text-sm text-[var(--navy)] dark:text-blue-400">
-                        {Math.round(match.similarity.finalScore * 100)}% Match
+                        {match.confidencePercent}% Match
                       </div>
                     </div>
                   </div>
@@ -116,7 +121,7 @@ export const StudentMatchesView: React.FC<StudentMatchesViewProps> = ({
                         <span>Key Issued</span>
                       </span>
                       <span className="font-mono-numbers font-bold text-[var(--navy)] dark:text-blue-300">
-                        {match.oneTimeHandoverKey}
+                        {match.handoverKeyExpiresAt ? 'Active' : 'Unavailable'}
                       </span>
                     </div>
                   )}
@@ -148,45 +153,32 @@ export const StudentMatchesView: React.FC<StudentMatchesViewProps> = ({
                   {/* Lost Item */}
                   <div className="border-2 border-black dark:border-neutral-700 p-4 space-y-3">
                     <div className="text-[11px] font-mono-numbers uppercase text-[var(--muted)] font-bold">
-                      Your Lost Report ({selectedMatch.lostItem.id})
+                      Other Report ({selectedMatch.otherItem.id})
                     </div>
                     <img
-                      src={selectedMatch.lostItem.imageUrl}
-                      alt="Lost"
+                      src={selectedMatch.otherItem.imageUrl}
+                      alt={selectedMatch.otherItem.title}
                       referrerPolicy="no-referrer"
                       className="w-full h-36 object-cover border border-black"
                     />
                     <div className="font-bold text-sm text-black dark:text-white">
-                      {selectedMatch.lostItem.title}
+                      {selectedMatch.otherItem.title}
                     </div>
                     <p className="text-xs text-[var(--muted)] line-clamp-2">
-                      {selectedMatch.lostItem.description}
+                      {selectedMatch.otherItem.description}
                     </p>
                     <div className="text-[11px] font-mono-numbers text-[var(--muted)]">
-                      {selectedMatch.lostItem.location} · {selectedMatch.lostItem.eventDate}
+                      {selectedMatch.otherItem.location} · {selectedMatch.otherItem.eventFrom || 'Date unavailable'}
                     </div>
                   </div>
 
-                  {/* Found Item */}
                   <div className="border-2 border-black dark:border-neutral-700 p-4 space-y-3 bg-[var(--surface)] dark:bg-slate-900/60">
                     <div className="text-[11px] font-mono-numbers uppercase text-[var(--navy)] dark:text-blue-400 font-bold">
-                      Surrendered Property ({selectedMatch.foundItem.id})
+                      Next Step
                     </div>
-                    <img
-                      src={selectedMatch.foundItem.imageUrl}
-                      alt="Found"
-                      referrerPolicy="no-referrer"
-                      className="w-full h-36 object-cover border border-black"
-                    />
-                    <div className="font-bold text-sm text-black dark:text-white">
-                      {selectedMatch.foundItem.title}
-                    </div>
-                    <p className="text-xs text-[var(--muted)] line-clamp-2">
-                      {selectedMatch.foundItem.description}
+                    <p className="text-sm leading-6 text-black dark:text-white">
+                      {selectedMatch.nextStep || 'No further action is currently required.'}
                     </p>
-                    <div className="text-[11px] font-mono-numbers text-[var(--muted)]">
-                      {selectedMatch.foundItem.location} · {selectedMatch.foundItem.eventDate}
-                    </div>
                   </div>
                 </div>
 
@@ -204,7 +196,7 @@ export const StudentMatchesView: React.FC<StudentMatchesViewProps> = ({
                           One-Time Verification Key
                         </div>
                         <div className="text-2xl font-bold font-mono-numbers text-black dark:text-white mt-1">
-                          {selectedMatch.oneTimeHandoverKey}
+                          {selectedMatch.handoverKeyExpiresAt ? `Expires ${selectedMatch.handoverKeyExpiresAt}` : 'Issued by email'}
                         </div>
                         <div className="text-[10px] text-[var(--muted)] mt-1 font-mono-numbers">
                           Show this key at Security Desk
