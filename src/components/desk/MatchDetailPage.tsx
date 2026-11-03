@@ -1,306 +1,137 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useRouter } from '../../lib/router';
-import { Match, User } from '../../types';
-import { StatusBadge } from '../ui/StatusBadge';
-import { 
-  ArrowLeft, 
-  Sparkles, 
-  ShieldCheck, 
-  AlertCircle 
-} from 'lucide-react';
+import { DeskMatch } from '../../lib/api/adapters';
+import { deskApi } from '../../lib/api/desk.api';
+import { PageHeader, PortalShell, Link } from '../portal-shell';
+import { AlertCircle, ShieldCheck } from 'lucide-react';
 
 interface MatchDetailPageProps {
-  match: Match | null;
-  currentUser: User;
-  onApprove: (matchId: string, remarks: string) => Promise<void>;
-  onReject: (matchId: string, remarks: string) => Promise<void>;
+  matchId: string;
 }
 
-export const MatchDetailPage: React.FC<MatchDetailPageProps> = ({
-  match,
-  onApprove,
-  onReject,
-}) => {
+export const MatchDetailPage: React.FC<MatchDetailPageProps> = ({ matchId }) => {
   const { navigate } = useRouter();
+  const [match, setMatch] = useState<DeskMatch | null>(null);
+  const [loading, setLoading] = useState(true);
   const [remarks, setRemarks] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [success, setSuccess] = useState<string | null>(null);
 
-  if (!match) {
-    return (
-      <div className="border-2 border-black dark:border-neutral-800 p-12 text-center bg-white dark:bg-[#0B1422]">
-        <h2 className="text-xl font-bold uppercase text-black dark:text-white mb-2">Match Record Not Found</h2>
-        <p className="text-xs text-[var(--muted)] mb-6">The match reference could not be located in the desk queue.</p>
-        <button
-          onClick={() => navigate('/desk/matches')}
-          className="px-4 py-2 bg-black text-white text-xs font-bold uppercase tracking-wider cursor-pointer"
-        >
-          Return to Queue
-        </button>
-      </div>
-    );
+  useEffect(() => {
+    let active = true;
+    setLoading(true);
+    setError(null);
+    deskApi.getMatch(matchId)
+      .then(result => {
+        if (active) setMatch(result);
+      })
+      .catch(reason => {
+        if (active) setError(reason instanceof Error ? reason.message : 'Unable to load match details.');
+      })
+      .finally(() => {
+        if (active) setLoading(false);
+      });
+    return () => {
+      active = false;
+    };
+  }, [matchId]);
+
+  const moderate = async (action: 'approve' | 'reject') => {
+    if (!remarks.trim()) {
+      setError(`Please provide officer ${action === 'approve' ? 'verification remarks' : 'a rejection reason'}.`);
+      return;
+    }
+    if (!window.confirm(`Confirm ${action} of match ${matchId}?`)) return;
+    setSubmitting(true);
+    setError(null);
+    setSuccess(null);
+    try {
+      const updated = action === 'approve'
+        ? await deskApi.approveMatch(matchId, remarks.trim())
+        : await deskApi.rejectMatch(matchId, remarks.trim());
+      setMatch(updated);
+      setSuccess(`Match ${action}d successfully.`);
+    } catch (reason) {
+      setError(reason instanceof Error ? reason.message : `Failed to ${action} match.`);
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  if (loading) {
+    return <PortalShell><div className="border-2 border-black p-12 text-center text-xs text-[var(--muted)]">Loading match details...</div></PortalShell>;
   }
 
-  const isPending = match.status === 'PENDING_REVIEW';
-  const isFoundInCustody = match.foundItem.submissionStatus === 'RECEIVED_BY_DESK';
+  if (error && !match) {
+    return <PortalShell><div className="border-2 border-red-700 p-8 text-center text-xs text-red-700 dark:text-red-300">{error}</div></PortalShell>;
+  }
 
-  const handleApprove = async () => {
-    if (!remarks.trim()) {
-      setError('Please provide officer verification remarks before approving.');
-      return;
-    }
-    setSubmitting(true);
-    setError(null);
-    try {
-      await onApprove(match.id, remarks);
-      navigate('/desk/matches');
-    } catch (err: any) {
-      setError(err.message || 'Failed to approve match.');
-    } finally {
-      setSubmitting(false);
-    }
-  };
+  if (!match) {
+    return <PortalShell><div className="border-2 border-black p-8 text-center"><h2 className="text-xl font-bold uppercase">Match Record Not Found</h2><Link href="/desk/matches" className="inline-block mt-6 px-5 py-3 bg-black text-white text-xs font-bold uppercase">Return to Queue</Link></div></PortalShell>;
+  }
 
-  const handleReject = async () => {
-    if (!remarks.trim()) {
-      setError('Please specify reason for rejecting match.');
-      return;
-    }
-    setSubmitting(true);
-    setError(null);
-    try {
-      await onReject(match.id, remarks);
-      navigate('/desk/matches');
-    } catch (err: any) {
-      setError(err.message || 'Failed to reject match.');
-    } finally {
-      setSubmitting(false);
-    }
-  };
+  const isPending = match.status === 'PENDING';
+  const itemCard = (label: string, item: DeskMatch['lostItem']) => (
+    <div className="border-2 border-black dark:border-neutral-800 p-6 space-y-4 bg-white dark:bg-[#0B1422]">
+      <div className="flex items-center justify-between border-b-2 border-black dark:border-neutral-800 pb-2">
+        <span className="label text-[var(--muted)]">{label}</span>
+        <span className="font-mono-numbers text-xs font-bold">Reg: {item.reporterRegistrationNumber}</span>
+      </div>
+      {item.imageUrl && <img src={item.imageUrl} alt={item.title} referrerPolicy="no-referrer" className="w-full h-44 object-cover border-2 border-black dark:border-neutral-700" />}
+      <h3 className="font-bold text-base">{item.title}</h3>
+      <p className="text-xs text-[var(--muted)] leading-relaxed">{item.description}</p>
+      <dl className="grid grid-cols-2 gap-3 pt-2 border-t-2 border-black dark:border-neutral-800 text-xs font-mono-numbers">
+        <div><dt className="label text-[var(--muted)]">Location</dt><dd className="font-bold mt-0.5">{item.location}</dd></div>
+        <div><dt className="label text-[var(--muted)]">Event</dt><dd className="font-bold mt-0.5">{item.eventFrom || 'Not provided'}</dd></div>
+      </dl>
+    </div>
+  );
 
   return (
-    <div className="space-y-6">
-      {/* Header */}
-      <div className="border-b-2 border-black dark:border-neutral-800 pb-4 flex flex-col sm:flex-row sm:items-end justify-between gap-4">
-        <div>
-          <button
-            onClick={() => navigate('/desk/matches')}
-            className="text-xs font-mono-numbers text-[var(--muted)] hover:text-black dark:hover:text-white flex items-center gap-1.5 uppercase font-bold mb-2 cursor-pointer"
-          >
-            <ArrowLeft className="w-3.5 h-3.5" />
-            <span>Back to Moderation Queue</span>
-          </button>
-          <div className="text-xs font-mono-numbers text-[var(--muted)] uppercase font-bold mb-1">
-            MODERATION DOSSIER // {match.id}
+    <PortalShell>
+      <PageHeader
+        eyebrow={`MODERATION DOSSIER / ${match.id}`}
+        title="MATCH INSPECTION."
+        copy="Inspect claimant report against surrendered property and record authorization."
+        action={<Link href="/desk/matches" className="border-2 border-black dark:border-white px-5 py-3 text-xs font-bold uppercase tracking-[.12em] block text-center">Back to Queue</Link>}
+      />
+      <div className="py-4 sm:py-6 space-y-6">
+        {error && <p className="text-xs text-red-700 dark:text-red-400 flex items-center gap-1"><AlertCircle className="w-3.5 h-3.5" />{error}</p>}
+        {success && <p className="border-2 border-emerald-700 p-3 text-xs text-emerald-700 dark:text-emerald-300">{success}</p>}
+        <div className="grid grid-cols-2 lg:grid-cols-4 border-2 border-black dark:border-neutral-800 divide-x-2 divide-y-2 lg:divide-y-0 divide-black bg-white dark:bg-[#0B1422]">
+          {[
+            ['Overall Confidence', match.finalScore],
+            ['Visual Correlation', match.imageCompared ? match.imageScore : null],
+            ['Description Match', match.textScore],
+            ['Location & Time', match.timeScore],
+          ].map(([label, score]) => <div key={label as string} className="p-4 sm:p-5"><div className="text-xl sm:text-2xl font-extrabold font-mono-numbers">{score === null ? 'N/A' : `${Math.round(Number(score) * 100)}%`}</div><div className="label text-[var(--muted)] mt-1 text-[10px] sm:text-xs">{label as string}</div></div>)}
+        </div>
+        <div className="p-4 border-2 border-black dark:border-neutral-800 bg-[var(--surface)] dark:bg-[#111F31] flex items-center justify-between gap-2 text-xs font-mono-numbers">
+          <div className="flex items-center gap-2"><ShieldCheck className="w-4 h-4" /><span>{match.foundItem.deskReceivedAt ? 'Found property verified in Security Vault.' : 'Physical item still pending drop-off by student finder.'}</span></div>
+          <span className="font-bold border border-black dark:border-white px-2 py-0.5 uppercase">{match.status}</span>
+        </div>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          {itemCard('CLAIMANT REPORT', match.lostItem)}
+          {itemCard('SURRENDERED PROPERTY', match.foundItem)}
+        </div>
+        {isPending ? (
+          <div className="border-2 border-black dark:border-neutral-800 bg-white dark:bg-[#0B1422] p-6 space-y-4">
+            <label className="block text-xs font-bold uppercase tracking-[0.12em]">Duty Officer Verification Remarks *</label>
+            <textarea rows={3} value={remarks} onChange={event => setRemarks(event.target.value)} className="w-full px-3 py-2 text-xs border-2 border-black dark:border-neutral-700 bg-white dark:bg-slate-900" placeholder="Record inspection basis..." />
+            <div className="flex justify-end gap-2 border-t-2 border-black pt-4">
+              <button disabled={submitting} onClick={() => moderate('reject')} className="px-4 py-2.5 border-2 border-black text-xs font-bold uppercase disabled:opacity-50">Reject Match</button>
+              <button disabled={submitting} onClick={() => moderate('approve')} className="px-6 py-2.5 bg-black text-white dark:bg-white dark:text-black text-xs font-bold uppercase disabled:opacity-50">{submitting ? 'Saving...' : 'Approve Match & Issue Handover Key'}</button>
+            </div>
           </div>
-          <h1 className="text-2xl sm:text-3xl font-extrabold uppercase tracking-tight text-black dark:text-white">
-            Match Inspection &amp; Decision
-          </h1>
-        </div>
-
-        <div className="flex items-center gap-3">
-          <StatusBadge status={match.status} />
-        </div>
+        ) : (
+          <div className="border-2 border-black dark:border-neutral-800 bg-white dark:bg-[#0B1422] p-5 space-y-2">
+            <div className="label text-[var(--muted)]">MODERATOR DECISION LOGGED</div>
+            <div className="text-xs bg-[var(--surface)] p-3 border-2 border-black font-mono-numbers">Review note: <strong>{match.reviewNote || 'Not provided'}</strong></div>
+            <div className="text-xs font-mono-numbers">Reviewed: {match.reviewedAt || 'Not provided'}</div>
+          </div>
+        )}
       </div>
-
-      {/* Similarity Metrics Strip */}
-      <div className="border-2 border-black dark:border-neutral-800 p-5 bg-[var(--surface)] dark:bg-slate-900/50">
-        <div className="flex items-center justify-between mb-3">
-          <div className="flex items-center gap-2">
-            <Sparkles className="w-4 h-4 text-[var(--navy)] dark:text-blue-400" />
-            <span className="text-xs font-bold uppercase tracking-wider text-black dark:text-white">
-              AI Matching Metrics
-            </span>
-          </div>
-          <span className="text-xs font-mono-numbers text-[var(--muted)]">
-            Verified Factors
-          </span>
-        </div>
-
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-center font-mono-numbers">
-          <div className="p-3 border-2 border-black dark:border-neutral-700 bg-white dark:bg-slate-800">
-            <div className="text-[10px] uppercase text-[var(--muted)] font-bold">Description Match</div>
-            <div className="text-xl font-bold mt-1 text-black dark:text-white">
-              {Math.round(match.similarity.textSimilarity * 100)}%
-            </div>
-          </div>
-          <div className="p-3 border-2 border-black dark:border-neutral-700 bg-white dark:bg-slate-800">
-            <div className="text-[10px] uppercase text-[var(--muted)] font-bold">Visual Match</div>
-            <div className="text-xl font-bold mt-1 text-black dark:text-white">
-              {Math.round(match.similarity.imageSimilarity * 100)}%
-            </div>
-          </div>
-          <div className="p-3 border-2 border-black dark:border-neutral-700 bg-white dark:bg-slate-800">
-            <div className="text-[10px] uppercase text-[var(--muted)] font-bold">Location &amp; Time</div>
-            <div className="text-xl font-bold mt-1 text-black dark:text-white">
-              {Math.round(match.similarity.timeSimilarity * 100)}%
-            </div>
-          </div>
-          <div className="p-3 border-2 border-[var(--navy)] bg-[var(--navy)] text-white">
-            <div className="text-[10px] uppercase font-bold text-neutral-200">Overall Confidence</div>
-            <div className="text-xl font-bold mt-1">
-              {Math.round(match.similarity.finalScore * 100)}%
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* Custody Info */}
-      <div className="p-4 border-2 border-black bg-white dark:bg-slate-900 text-xs flex items-center justify-between font-mono-numbers">
-        <div className="flex items-center gap-2">
-          <ShieldCheck className="w-4 h-4 text-[var(--navy)] shrink-0" />
-          <span>
-            {isFoundInCustody 
-              ? 'Found item verified in Security Vault. Ready for collection upon approval.'
-              : 'Physical item still pending drop-off by student finder.'}
-          </span>
-        </div>
-        <span className="font-bold shrink-0">
-          STATUS: {match.foundItem.submissionStatus}
-        </span>
-      </div>
-
-      {/* Side-by-Side Comparison */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        
-        {/* Left: Lost Item */}
-        <div className="border-2 border-black dark:border-neutral-700 p-5 space-y-3 bg-white dark:bg-[#0B1422]">
-          <div className="flex items-center justify-between border-b-2 border-black dark:border-neutral-800 pb-2">
-            <span className="text-xs font-mono-numbers uppercase text-[var(--muted)] font-bold">
-              Claimant Report // {match.lostItem.id}
-            </span>
-            <span className="text-xs font-mono-numbers font-bold text-black dark:text-white">
-              Student ID: {match.lostItem.reporterRegNo}
-            </span>
-          </div>
-
-          <img
-            src={match.lostItem.imageUrl}
-            alt={match.lostItem.title}
-            referrerPolicy="no-referrer"
-            className="w-full h-48 object-cover border-2 border-black"
-          />
-
-          <h3 className="font-bold text-base text-black dark:text-white">
-            {match.lostItem.title}
-          </h3>
-
-          <div className="text-xs text-[var(--muted)] bg-[var(--surface)] dark:bg-slate-900/40 p-3 border-2 border-black leading-relaxed">
-            {match.lostItem.description}
-          </div>
-
-          <div className="space-y-1 text-xs font-mono-numbers text-[var(--muted)] pt-1">
-            <div>Location: <strong className="text-black dark:text-white">{match.lostItem.location}</strong></div>
-            <div>Lost: <strong className="text-black dark:text-white">{match.lostItem.eventDate} ({match.lostItem.eventTime})</strong></div>
-            <div>Category: <strong className="text-black dark:text-white">{match.lostItem.category}</strong></div>
-          </div>
-        </div>
-
-        {/* Right: Found Item in Custody */}
-        <div className="border-2 border-black dark:border-neutral-700 p-5 space-y-3 bg-[var(--surface)] dark:bg-slate-900/30">
-          <div className="flex items-center justify-between border-b-2 border-black dark:border-neutral-800 pb-2">
-            <span className="text-xs font-mono-numbers uppercase text-[var(--navy)] dark:text-blue-400 font-bold">
-              Surrendered Property // {match.foundItem.id}
-            </span>
-            <span className="text-xs font-mono-numbers font-bold text-black dark:text-white">
-              Finder ID: {match.foundItem.reporterRegNo}
-            </span>
-          </div>
-
-          <img
-            src={match.foundItem.imageUrl}
-            alt={match.foundItem.title}
-            referrerPolicy="no-referrer"
-            className="w-full h-48 object-cover border-2 border-black"
-          />
-
-          <h3 className="font-bold text-base text-black dark:text-white">
-            {match.foundItem.title}
-          </h3>
-
-          <div className="text-xs text-[var(--muted)] bg-white dark:bg-slate-900/60 p-3 border-2 border-black leading-relaxed">
-            {match.foundItem.description}
-          </div>
-
-          <div className="space-y-1 text-xs font-mono-numbers text-[var(--muted)] pt-1">
-            <div>Recovered at: <strong className="text-black dark:text-white">{match.foundItem.location}</strong></div>
-            <div>Intake Date: <strong className="text-black dark:text-white">{match.foundItem.eventDate} ({match.foundItem.eventTime})</strong></div>
-            <div>Locker Placement: <strong className="text-black dark:text-white">{match.foundItem.deskNotes || 'Vault Locker B-04'}</strong></div>
-          </div>
-        </div>
-
-      </div>
-
-      {/* Moderator Decision Area */}
-      {isPending ? (
-        <div className="border-2 border-black dark:border-neutral-700 bg-white dark:bg-[#0B1422] p-6 space-y-4">
-          <div className="space-y-1">
-            <label className="block text-xs font-bold uppercase tracking-[0.12em] text-black dark:text-white">
-              Duty Officer Decision Remarks *
-            </label>
-            <textarea
-              rows={3}
-              value={remarks}
-              onChange={(e) => setRemarks(e.target.value)}
-              placeholder="Record inspection notes (e.g. Serial tag and visual identifiers confirmed against student report)..."
-              className="w-full px-3 py-2.5 text-xs border-2 border-black dark:border-neutral-700 bg-white dark:bg-slate-900 text-black dark:text-white"
-            />
-          </div>
-
-          {error && (
-            <p className="text-xs text-black dark:text-white font-mono-numbers flex items-center gap-1">
-              <AlertCircle className="w-3.5 h-3.5 text-[var(--navy)]" />
-              <span>{error}</span>
-            </p>
-          )}
-
-          <div className="flex items-center justify-between pt-2 border-t-2 border-black dark:border-neutral-800">
-            <button
-              type="button"
-              onClick={() => navigate('/desk/matches')}
-              className="px-4 py-2 border-2 border-black text-xs font-bold uppercase tracking-wider cursor-pointer hover:bg-neutral-100"
-            >
-              Back
-            </button>
-
-            <div className="flex items-center gap-2">
-              <button
-                type="button"
-                disabled={submitting}
-                onClick={handleReject}
-                className="px-4 py-2 border-2 border-black hover:bg-neutral-100 text-xs font-bold uppercase tracking-[0.12em] transition-colors cursor-pointer"
-              >
-                Reject Match
-              </button>
-              <button
-                type="button"
-                disabled={submitting}
-                onClick={handleApprove}
-                className="px-6 py-2 bg-[var(--navy)] hover:bg-[var(--navy-hover)] text-white text-xs font-bold uppercase tracking-[0.12em] transition-colors cursor-pointer disabled:opacity-50"
-              >
-                {submitting ? 'Authorizing...' : 'Approve Match & Issue Handover Key'}
-              </button>
-            </div>
-          </div>
-        </div>
-      ) : (
-        <div className="border-2 border-black dark:border-neutral-700 bg-white dark:bg-[#0B1422] p-5 space-y-2">
-          <div className="text-xs font-mono-numbers text-[var(--muted)] uppercase font-bold">
-            Moderator Decision Logged
-          </div>
-          <div className="text-xs bg-[var(--surface)] dark:bg-slate-900 p-3 border-2 border-black font-mono-numbers">
-            Officer Remarks: <strong>{match.moderatorRemarks || 'Approved'}</strong>
-          </div>
-          {match.oneTimeHandoverKey && (
-            <div className="flex items-center gap-2 text-xs font-mono-numbers pt-1">
-              <span className="text-[var(--muted)] font-bold">Handover Key:</span>
-              <span className="font-bold text-black dark:text-white px-2.5 py-1 border-2 border-black bg-white dark:bg-black">
-                {match.oneTimeHandoverKey}
-              </span>
-            </div>
-          )}
-        </div>
-      )}
-    </div>
+    </PortalShell>
   );
 };

@@ -203,18 +203,6 @@ function AppContent() {
     }
   };
 
-  const handleApproveMatch = async (matchId: string, remarks: string) => {
-    if (!currentUser) return;
-    await deskApi.approveMatch(matchId, remarks, currentUser);
-    refreshAllData();
-  };
-
-  const handleRejectMatch = async (matchId: string, remarks: string) => {
-    if (!currentUser) return;
-    await deskApi.rejectMatch(matchId, remarks, currentUser);
-    refreshAllData();
-  };
-
   const handleMarkNotificationRead = async (id: string) => {
     await notificationsApi.markAsRead(id);
     setNotifications(prev => prev.map(n => n.id === id ? { ...n, isRead: true } : n));
@@ -432,92 +420,74 @@ function AppContent() {
           )}
         </main>
       ) : (
-        <div className="flex-1 max-w-[1600px] w-full mx-auto flex flex-col lg:grid lg:grid-cols-12">
-          <div className="lg:col-span-3">
-            <DeskNav
-              currentPath={path}
-              pendingSubmissionsCount={pendingDeskIntake}
-              pendingMatchesCount={pendingModerations}
-              pendingHandoversCount={pendingHandoversCount}
+        <main className="flex-1 w-full max-w-6xl mx-auto px-4 sm:px-8 lg:px-14 py-6 sm:py-8 pb-28 md:pb-28 min-w-0">
+          <DeskNav
+            currentPath={path}
+            pendingSubmissionsCount={pendingDeskIntake}
+            pendingMatchesCount={pendingModerations}
+            pendingHandoversCount={pendingHandoversCount}
+          />
+
+          {path === '/desk' && (
+            <DeskDashboard
+              stats={deskStats}
+              currentUser={currentUser}
+              items={items}
+              matches={matches}
+              handovers={handovers}
+              receptions={receptions}
+              onNavigate={(sec) => {
+                if (sec === 'submissions') navigate('/desk/submissions');
+                else if (sec === 'matches') navigate('/desk/matches');
+                else if (sec === 'handovers') navigate('/desk/handovers');
+                else if (sec === 'items') navigate('/desk/items');
+                else if (sec === 'students') navigate('/desk/students');
+              }}
+              onOpenMatchModal={(m) => navigate(`/desk/matches/${m.id}`)}
             />
-          </div>
+          )}
 
-          <main className="lg:col-span-9 p-4 sm:p-6 lg:p-10 min-w-0">
-            {path === '/desk' && (
-              <DeskDashboard
-                stats={deskStats}
-                currentUser={currentUser}
-                items={items}
-                matches={matches}
-                handovers={handovers}
-                receptions={receptions}
-                onNavigate={(sec) => {
-                  if (sec === 'submissions') navigate('/desk/submissions');
-                  else if (sec === 'matches') navigate('/desk/matches');
-                  else if (sec === 'handovers') navigate('/desk/handovers');
-                  else if (sec === 'items') navigate('/desk/items');
-                  else if (sec === 'students') navigate('/desk/students');
-                }}
-                onOpenMatchModal={(m) => navigate(`/desk/matches/${m.id}`)}
-              />
-            )}
+          {path === '/desk/items' && (
+            <DeskItemManagement
+              items={items}
+              onSelectItem={(item) => navigate(`/app/items/${item.id}`)}
+              onInitiateReception={() => navigate('/desk/submissions')}
+            />
+          )}
 
-            {path === '/desk/items' && (
-              <DeskItemManagement
-                items={items}
-                onSelectItem={(item) => navigate(`/app/items/${item.id}`)}
-                onInitiateReception={() => navigate('/desk/submissions')}
-              />
-            )}
+          {path === '/desk/submissions' && (
+            <PhysicalReceptionModule
+            />
+          )}
 
-            {path === '/desk/submissions' && (
-              <PhysicalReceptionModule
-                items={items}
-                receptions={receptions}
-                officer={currentUser}
-                onRefreshData={refreshAllData}
-              />
-            )}
+          {path === '/desk/matches' && (
+            <MatchModerationQueue
+              onOpenMatchModal={(matchId) => navigate(`/desk/matches/${matchId}`)}
+            />
+          )}
 
-            {path === '/desk/matches' && (
-              <MatchModerationQueue
-                matches={matches}
-                currentUser={currentUser}
-                onOpenMatchModal={(m) => navigate(`/desk/matches/${m.id}`)}
-                onRefreshData={refreshAllData}
-              />
-            )}
+          {path.startsWith('/desk/matches/') && (
+            <MatchDetailPage
+              matchId={params.id || ''}
+            />
+          )}
 
-            {path.startsWith('/desk/matches/') && (
-              <MatchDetailPage
-                match={matches.find(m => m.id === params.id) || null}
-                currentUser={currentUser}
-                onApprove={handleApproveMatch}
-                onReject={handleRejectMatch}
-              />
-            )}
+          {path === '/desk/handovers' && (
+            <HandoverVerificationTerminal
+              onOpenHandover={(matchId) => navigate(`/desk/handovers/${matchId}`)}
+            />
+          )}
 
-            {path === '/desk/handovers' && (
-              <HandoverVerificationTerminal
-                matches={matches}
-                officer={currentUser}
-                onRefreshData={refreshAllData}
-              />
-            )}
+          {path.startsWith('/desk/handovers/') && (
+            <HandoverDetailPage
+              matchId={params.id || ''}
+            />
+          )}
 
-            {path.startsWith('/desk/handovers/') && (
-              <HandoverDetailPage
-                match={matches.find(m => m.id === params.id) || null}
-                officer={currentUser}
-                onRefreshData={refreshAllData}
-              />
-            )}
-
-            {path === '/desk/students' && (
-              <StudentLookupModule />
-            )}
-          </main>
-        </div>
+          {path === '/desk/students' && (
+            <StudentLookupModule />
+          )}
+        </main>
       )}
 
       {currentUser && (

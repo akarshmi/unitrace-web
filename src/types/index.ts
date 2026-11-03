@@ -78,19 +78,29 @@ export interface StudentMatchItem {
   status: ItemStatus;
   eventFrom: string | null;
   eventTo: string | null;
-  receivedAtDesk: boolean;
+  createdAt: string;
+  deskReceivedAt: string | null;
   dropOffDeadline: string | null;
 }
 
 export interface StudentMatch {
   id: string;
-  status: string;
+  status: 'PENDING' | 'APPROVED' | 'REJECTED' | 'COMPLETED' | 'EXPIRED';
   yourRole: 'LOST_OWNER' | 'FOUND_OWNER';
   confidencePercent: number;
+  finalScore: number;
+  textScore: number;
+  imageCompared: boolean;
+  imageScore: number;
+  timeScore: number;
+  yourItem: StudentMatchItem;
   otherItem: StudentMatchItem;
+  handoverKeyIssued: boolean;
   handoverKeyExpiresAt: string | null;
   nextStep: string;
   createdAt: string;
+  reviewedAt: string | null;
+  completedAt: string | null;
 }
 
 export type MatchStatus = 'PENDING_REVIEW' | 'APPROVED' | 'REJECTED' | 'CLAIMED';

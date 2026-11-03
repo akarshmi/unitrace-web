@@ -1,17 +1,6 @@
 import React, { useState } from 'react';
 import { Match, User } from '../../types';
-import { StatusBadge } from '../ui/StatusBadge';
-import { 
-  X, 
-  Sparkles, 
-  CheckCircle, 
-  XCircle, 
-  AlertTriangle, 
-  Clock, 
-  MapPin, 
-  ShieldCheck,
-  UserCheck
-} from 'lucide-react';
+import { X, ShieldCheck, AlertCircle } from 'lucide-react';
 
 interface MatchComparisonModalProps {
   match: Match | null;
@@ -25,7 +14,6 @@ interface MatchComparisonModalProps {
 export const MatchComparisonModal: React.FC<MatchComparisonModalProps> = ({
   match,
   isOpen,
-  currentUser,
   onClose,
   onApprove,
   onReject,
@@ -41,7 +29,7 @@ export const MatchComparisonModal: React.FC<MatchComparisonModalProps> = ({
 
   const handleApprove = async () => {
     if (!remarks.trim()) {
-      setError('Please provide moderator verification remarks before approving.');
+      setError('Please provide verification remarks before approving.');
       return;
     }
     setSubmitting(true);
@@ -76,25 +64,27 @@ export const MatchComparisonModal: React.FC<MatchComparisonModalProps> = ({
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/75 p-4 overflow-y-auto">
       <div 
-        className="w-full max-w-4xl bg-white dark:bg-[#0B1422] border-2 border-black dark:border-neutral-700 shadow-none my-6"
+        className="w-full max-w-4xl bg-white dark:bg-[#0B1422] border-2 border-black dark:border-white shadow-none my-6"
         role="dialog"
         aria-modal="true"
       >
         {/* Header */}
-        <div className="border-b-2 border-black dark:border-neutral-700 p-5 flex items-center justify-between">
+        <div className="border-b-2 border-black dark:border-neutral-800 p-5 flex items-center justify-between">
           <div>
-            <div className="text-xs font-mono-numbers uppercase text-neutral-500 mb-0.5">
-              Desk Moderation Dossier // {match.id}
+            <div className="label text-[var(--muted)]">
+              MODERATION DOSSIER // {match.id}
             </div>
-            <h2 className="text-xl font-heading text-black dark:text-white uppercase tracking-tight">
-              Match Comparison &amp; Verification
+            <h2 className="text-xl font-extrabold text-black dark:text-white uppercase tracking-tight">
+              Match Inspection &amp; Decision
             </h2>
           </div>
           <div className="flex items-center gap-3">
-            <StatusBadge status={match.status} />
+            <span className="border border-black dark:border-white px-2 py-0.5 text-xs font-bold uppercase">
+              {match.status}
+            </span>
             <button
               onClick={onClose}
-              className="p-1 border border-neutral-300 dark:border-neutral-700 hover:border-black text-neutral-500 hover:text-black cursor-pointer"
+              className="p-1 border border-black dark:border-white hover:bg-neutral-100 dark:hover:bg-neutral-800 text-black dark:text-white cursor-pointer"
             >
               <X className="w-5 h-5" />
             </button>
@@ -102,157 +92,125 @@ export const MatchComparisonModal: React.FC<MatchComparisonModalProps> = ({
         </div>
 
         <div className="p-6 space-y-6">
-          {/* Similarity Metric Ribbons */}
-          <div className="border-2 border-black dark:border-neutral-800 p-4 bg-neutral-50 dark:bg-slate-900/50">
-            <div className="flex items-center justify-between mb-3">
-              <div className="flex items-center gap-2">
-                <Sparkles className="w-4 h-4 text-[#142B4A] dark:text-blue-400" />
-                <span className="text-xs font-bold uppercase tracking-wider text-black dark:text-white">
-                  Automated Correspondence Metrics
-                </span>
+          {/* Similarity Metric Strip */}
+          <div className="grid grid-cols-2 sm:grid-cols-4 border-2 border-black dark:border-neutral-800 divide-x-2 divide-y-2 sm:divide-y-0 divide-black dark:divide-neutral-800 text-center font-mono-numbers">
+            <div className="p-3">
+              <div className="label text-[var(--muted)] text-[10px]">Description</div>
+              <div className="text-lg font-bold mt-1 text-black dark:text-white">
+                {Math.round(match.similarity.textSimilarity * 100)}%
               </div>
-              <span className="text-xs font-mono-numbers text-neutral-500">
-                Visual &amp; textual similarity
-              </span>
             </div>
-
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-center font-mono-numbers">
-              <div className="p-3 border border-neutral-300 dark:border-neutral-700 bg-white dark:bg-slate-800">
-                <div className="text-[10px] uppercase text-neutral-500">Description</div>
-                <div className="text-xl font-bold mt-1 text-black dark:text-white">
-                  {Math.round(match.similarity.textSimilarity * 100)}%
-                </div>
+            <div className="p-3">
+              <div className="label text-[var(--muted)] text-[10px]">Visual Match</div>
+              <div className="text-lg font-bold mt-1 text-black dark:text-white">
+                {Math.round(match.similarity.imageSimilarity * 100)}%
               </div>
-              <div className="p-3 border border-neutral-300 dark:border-neutral-700 bg-white dark:bg-slate-800">
-                <div className="text-[10px] uppercase text-neutral-500">Visual Match</div>
-                <div className="text-xl font-bold mt-1 text-black dark:text-white">
-                  {Math.round(match.similarity.imageSimilarity * 100)}%
-                </div>
+            </div>
+            <div className="p-3">
+              <div className="label text-[var(--muted)] text-[10px]">Location/Time</div>
+              <div className="text-lg font-bold mt-1 text-black dark:text-white">
+                {Math.round(match.similarity.timeSimilarity * 100)}%
               </div>
-              <div className="p-3 border border-neutral-300 dark:border-neutral-700 bg-white dark:bg-slate-800">
-                <div className="text-[10px] uppercase text-neutral-500">Location/Time</div>
-                <div className="text-xl font-bold mt-1 text-black dark:text-white">
-                  {Math.round(match.similarity.timeSimilarity * 100)}%
-                </div>
-              </div>
-              <div className="p-3 border-2 border-[#142B4A] dark:border-blue-400 bg-[#142B4A] text-white">
-                <div className="text-[10px] uppercase text-blue-200">Combined Score</div>
-                <div className="text-xl font-bold mt-1">
-                  {Math.round(match.similarity.finalScore * 100)}%
-                </div>
+            </div>
+            <div className="p-3 bg-black text-white dark:bg-white dark:text-black">
+              <div className="label text-white/70 dark:text-black/70 text-[10px]">Confidence</div>
+              <div className="text-lg font-bold mt-1">
+                {Math.round(match.similarity.finalScore * 100)}%
               </div>
             </div>
           </div>
 
-          {/* Physical Custody Verification Status */}
-          <div className={`p-4 border text-xs flex items-center justify-between ${
-            isFoundInCustody 
-              ? 'border-emerald-600 bg-emerald-50 dark:bg-emerald-950/30 text-emerald-900 dark:text-emerald-300'
-              : 'border-amber-600 bg-amber-50 dark:bg-amber-950/30 text-amber-900 dark:text-amber-300'
-          }`}>
+          {/* Physical Custody Info */}
+          <div className="p-4 border-2 border-black dark:border-neutral-800 bg-[var(--surface)] dark:bg-[#111F31] text-xs flex items-center justify-between font-mono-numbers">
             <div className="flex items-center gap-2">
-              <ShieldCheck className="w-4 h-4 shrink-0" />
+              <ShieldCheck className="w-4 h-4 shrink-0 text-black dark:text-white" />
               <span>
                 {isFoundInCustody 
-                  ? 'Found item has been physically checked into the Security Desk vault. Ready for authorized handover.'
-                  : 'Warning: Found item has NOT yet been physically surrendered to the desk. Moderator approval will require student to complete drop-off first.'}
+                  ? 'Found property verified in Security Desk vault. Ready for authorized handover.'
+                  : 'Physical item still pending drop-off by student finder.'}
               </span>
             </div>
-            <span className="font-mono-numbers font-bold shrink-0">
+            <span className="font-bold border border-black dark:border-white px-2 py-0.5 uppercase shrink-0">
               {match.foundItem.submissionStatus}
             </span>
           </div>
 
           {/* Side-by-Side Comparison */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            
-            {/* Left: Lost Item (Claimant) */}
-            <div className="border-2 border-black dark:border-neutral-700 p-4 space-y-3">
-              <div className="flex items-center justify-between border-b border-neutral-200 dark:border-neutral-800 pb-2">
-                <span className="text-xs font-mono-numbers uppercase text-neutral-500 font-bold">
-                  Claimant Lost Report // {match.lostItem.id}
-                </span>
-                <span className="text-xs font-mono-numbers font-bold text-black dark:text-white">
-                  Student: {match.lostItem.reporterRegNo}
+            {/* Left: Lost Item */}
+            <div className="border-2 border-black dark:border-neutral-800 p-4 space-y-3 bg-white dark:bg-[#0B1422]">
+              <div className="flex items-center justify-between border-b-2 border-black dark:border-neutral-800 pb-2">
+                <span className="label text-[var(--muted)]">LOST REPORT // {match.lostItem.id}</span>
+                <span className="font-mono-numbers text-xs font-bold text-black dark:text-white">
+                  Reg: {match.lostItem.reporterRegNo}
                 </span>
               </div>
-
-              <img
-                src={match.lostItem.imageUrl}
-                alt={match.lostItem.title}
-                referrerPolicy="no-referrer"
-                className="w-full h-48 object-cover border border-neutral-300 dark:border-neutral-700"
-              />
-
-              <h4 className="font-bold text-base text-black dark:text-white">
+              {match.lostItem.imageUrl && (
+                <img
+                  src={match.lostItem.imageUrl}
+                  alt={match.lostItem.title}
+                  referrerPolicy="no-referrer"
+                  className="w-full h-40 object-cover border-2 border-black dark:border-neutral-700"
+                />
+              )}
+              <h4 className="font-bold text-sm text-black dark:text-white truncate">
                 {match.lostItem.title}
               </h4>
-
-              <div className="text-xs text-neutral-600 dark:text-neutral-400 bg-neutral-50 dark:bg-slate-900/40 p-3 border border-neutral-200 dark:border-neutral-800 leading-relaxed">
+              <p className="text-xs text-[var(--muted)] line-clamp-2">
                 {match.lostItem.description}
-              </div>
-
-              <div className="space-y-1 text-xs font-mono-numbers text-neutral-500 pt-1">
-                <div>Venue: <strong className="text-black dark:text-white">{match.lostItem.location}</strong></div>
-                <div>Lost at: <strong className="text-black dark:text-white">{match.lostItem.eventDate} ({match.lostItem.eventTime})</strong></div>
-                <div>Category: <strong className="text-black dark:text-white">{match.lostItem.category}</strong></div>
+              </p>
+              <div className="text-xs font-mono-numbers text-[var(--muted)] pt-1">
+                {match.lostItem.location} ({match.lostItem.eventDate})
               </div>
             </div>
 
-            {/* Right: Found Item in Desk Custody */}
-            <div className="border-2 border-[#142B4A] dark:border-neutral-700 p-4 space-y-3 bg-[#F5F7FA]/50 dark:bg-slate-900/30">
-              <div className="flex items-center justify-between border-b border-neutral-200 dark:border-neutral-800 pb-2">
-                <span className="text-xs font-mono-numbers uppercase text-[#142B4A] dark:text-blue-400 font-bold">
-                  Custody Intake Record // {match.foundItem.id}
-                </span>
-                <span className="text-xs font-mono-numbers font-bold text-black dark:text-white">
+            {/* Right: Found Item */}
+            <div className="border-2 border-black dark:border-neutral-800 p-4 space-y-3 bg-white dark:bg-[#0B1422]">
+              <div className="flex items-center justify-between border-b-2 border-black dark:border-neutral-800 pb-2">
+                <span className="label text-[var(--muted)]">FOUND INTAKE // {match.foundItem.id}</span>
+                <span className="font-mono-numbers text-xs font-bold text-black dark:text-white">
                   Finder: {match.foundItem.reporterRegNo}
                 </span>
               </div>
-
-              <img
-                src={match.foundItem.imageUrl}
-                alt={match.foundItem.title}
-                referrerPolicy="no-referrer"
-                className="w-full h-48 object-cover border border-neutral-300 dark:border-neutral-700"
-              />
-
-              <h4 className="font-bold text-base text-black dark:text-white">
+              {match.foundItem.imageUrl && (
+                <img
+                  src={match.foundItem.imageUrl}
+                  alt={match.foundItem.title}
+                  referrerPolicy="no-referrer"
+                  className="w-full h-40 object-cover border-2 border-black dark:border-neutral-700"
+                />
+              )}
+              <h4 className="font-bold text-sm text-black dark:text-white truncate">
                 {match.foundItem.title}
               </h4>
-
-              <div className="text-xs text-neutral-600 dark:text-neutral-400 bg-white dark:bg-slate-900/60 p-3 border border-neutral-200 dark:border-neutral-800 leading-relaxed">
+              <p className="text-xs text-[var(--muted)] line-clamp-2">
                 {match.foundItem.description}
-              </div>
-
-              <div className="space-y-1 text-xs font-mono-numbers text-neutral-500 pt-1">
-                <div>Recovered at: <strong className="text-black dark:text-white">{match.foundItem.location}</strong></div>
-                <div>Intake at: <strong className="text-black dark:text-white">{match.foundItem.eventDate} ({match.foundItem.eventTime})</strong></div>
-                <div>Custody Notes: <strong className="text-black dark:text-white">{match.foundItem.deskNotes || 'Vault Checked'}</strong></div>
+              </p>
+              <div className="text-xs font-mono-numbers text-[var(--muted)] pt-1">
+                {match.foundItem.location} ({match.foundItem.eventDate})
               </div>
             </div>
-
           </div>
 
-          {/* Moderator Remarks & Decision Section */}
+          {/* Decision Section */}
           {isPending ? (
-            <div className="border-t-2 border-black dark:border-neutral-700 pt-4 space-y-4">
+            <div className="border-t-2 border-black dark:border-neutral-800 pt-4 space-y-4">
               <div className="space-y-1">
-                <label className="block text-xs font-semibold uppercase tracking-wider text-black dark:text-white">
-                  Duty Moderator Verification Remarks *
+                <label className="block text-xs font-bold uppercase tracking-[0.12em] text-black dark:text-white">
+                  Officer Inspection Remarks *
                 </label>
                 <textarea
                   rows={2}
                   value={remarks}
                   onChange={(e) => setRemarks(e.target.value)}
-                  placeholder="Record your inspection basis (e.g. Serial tag verified against student report, sleeve material matches)..."
-                  className="w-full px-3 py-2 text-xs border border-neutral-300 dark:border-neutral-700 dark:bg-slate-900"
+                  placeholder="Record verification basis (e.g. Serial tag and visual marks confirmed)..."
+                  className="w-full px-3 py-2 text-xs border-2 border-black dark:border-neutral-700 bg-white dark:bg-slate-900 text-black dark:text-white focus:outline-none"
                 />
               </div>
 
               {error && (
-                <p className="text-xs text-red-700 font-mono-numbers flex items-center gap-1">
-                  <AlertTriangle className="w-3.5 h-3.5" />
+                <p className="text-xs text-red-700 dark:text-red-400 font-mono-numbers flex items-center gap-1">
+                  <AlertCircle className="w-3.5 h-3.5" />
                   <span>{error}</span>
                 </p>
               )}
@@ -261,9 +219,9 @@ export const MatchComparisonModal: React.FC<MatchComparisonModalProps> = ({
                 <button
                   type="button"
                   onClick={onClose}
-                  className="px-4 py-2 border border-neutral-300 text-xs font-semibold uppercase cursor-pointer"
+                  className="px-4 py-2 border-2 border-black dark:border-white text-xs font-bold uppercase tracking-wider cursor-pointer hover:bg-neutral-100 dark:hover:bg-neutral-800"
                 >
-                  Defer Review
+                  Defer
                 </button>
 
                 <div className="flex items-center gap-2">
@@ -271,15 +229,15 @@ export const MatchComparisonModal: React.FC<MatchComparisonModalProps> = ({
                     type="button"
                     disabled={submitting}
                     onClick={handleReject}
-                    className="px-4 py-2 border border-red-700 text-red-700 hover:bg-red-700 hover:text-white text-xs font-semibold uppercase tracking-wider transition-colors cursor-pointer"
+                    className="px-4 py-2 border-2 border-black dark:border-white text-xs font-bold uppercase tracking-[0.12em] cursor-pointer hover:bg-neutral-100 dark:hover:bg-neutral-800"
                   >
-                    Reject Match
+                    Reject
                   </button>
                   <button
                     type="button"
                     disabled={submitting}
                     onClick={handleApprove}
-                    className="px-6 py-2 bg-[#142B4A] hover:bg-[#1D3B63] text-white text-xs font-semibold uppercase tracking-wider transition-colors cursor-pointer"
+                    className="px-6 py-2 bg-black dark:bg-white text-white dark:text-black text-xs font-bold uppercase tracking-[0.12em] cursor-pointer hover:bg-neutral-800 dark:hover:bg-neutral-200 transition-colors disabled:opacity-50"
                   >
                     {submitting ? 'Authorizing...' : 'Approve Match & Issue Handover Key'}
                   </button>
@@ -287,24 +245,13 @@ export const MatchComparisonModal: React.FC<MatchComparisonModalProps> = ({
               </div>
             </div>
           ) : (
-            <div className="border-t border-neutral-200 dark:border-neutral-800 pt-4 space-y-2">
-              <div className="text-xs font-mono-numbers text-neutral-500 uppercase">
-                Moderator Decision Logged
-              </div>
-              <div className="text-xs bg-neutral-100 dark:bg-slate-900 p-3 border border-neutral-200 dark:border-neutral-800 text-neutral-700 dark:text-neutral-300">
+            <div className="border-t-2 border-black dark:border-neutral-800 pt-4 space-y-2">
+              <div className="label text-[var(--muted)]">MODERATOR DECISION LOGGED</div>
+              <div className="text-xs bg-[var(--surface)] dark:bg-[#111F31] p-3 border-2 border-black dark:border-neutral-800 font-mono-numbers">
                 Remarks: <strong>{match.moderatorRemarks || 'Approved for collection'}</strong>
               </div>
-              {match.oneTimeHandoverKey && (
-                <div className="flex items-center gap-2 text-xs font-mono-numbers">
-                  <span className="text-neutral-500">Handover Key:</span>
-                  <span className="font-bold text-black dark:text-white px-2 py-0.5 border border-black">
-                    {match.oneTimeHandoverKey}
-                  </span>
-                </div>
-              )}
             </div>
           )}
-
         </div>
       </div>
     </div>

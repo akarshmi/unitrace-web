@@ -28,8 +28,27 @@ export const ItemDetailPage: React.FC<ItemDetailPageProps> = ({ item, match }) =
     );
   }
 
-  const isMatchedAndApproved = match && match.status === 'APPROVED';
+  const isLostOwner = match?.yourRole === 'LOST_OWNER';
+  const matchedFoundItemReceived = Boolean(match?.otherItem.deskReceivedAt);
+  const keyExpired = Boolean(
+    match?.handoverKeyExpiresAt &&
+    new Date(match.handoverKeyExpiresAt).getTime() < Date.now()
+  );
+  const isCollectionAuthorized = Boolean(
+    match &&
+    isLostOwner &&
+    match.status === 'APPROVED' &&
+    matchedFoundItemReceived &&
+    match.handoverKeyIssued &&
+    !keyExpired
+  );
   const isPendingSubmission = item.type === 'FOUND' && !item.deskReceivedAt;
+  const formatDate = (value: string) => {
+    const date = new Date(value);
+    return Number.isNaN(date.getTime())
+      ? 'Not available'
+      : new Intl.DateTimeFormat(undefined, { dateStyle: 'medium', timeStyle: 'short' }).format(date);
+  };
 
   return (
     <PortalShell>
@@ -101,18 +120,40 @@ export const ItemDetailPage: React.FC<ItemDetailPageProps> = ({ item, match }) =
 
         {/* Right Column: Next Step Aside (5 cols) */}
         <aside className="h-fit bg-black dark:bg-neutral-900 p-7 text-white lg:col-span-5 border-2 border-black dark:border-neutral-800">
-          {isMatchedAndApproved ? (
+          {isCollectionAuthorized ? (
             <>
               <p className="label text-white/60">COLLECTION STATUS</p>
               <h2 className="mt-4 text-2xl font-bold tracking-[-.04em]">
                 Ready for Pickup at Desk
               </h2>
               <p className="mt-4 text-sm leading-6 text-white/60">
-                Central Security Office (Block 29 Room 102). Present your University ID and verification key to complete custody handover.
+                Visit the Campus Security Office with your University ID and verification key to complete custody handover.
               </p>
-              <div className="mt-6 border-2 border-white p-4 font-mono-numbers text-center font-bold text-xl tracking-wider bg-white/10">
-                  {match?.handoverKeyExpiresAt ? `Expires ${match.handoverKeyExpiresAt}` : 'Issued by email'}
+              <div className="mt-6 border-2 border-white p-4 font-mono-numbers text-center font-bold text-sm tracking-wider bg-white/10 break-words">
+                Handover key issued. Email delivery status is not available here. Expires {formatDate(match?.handoverKeyExpiresAt || '')}.
               </div>
+            </>
+          ) : match?.status === 'APPROVED' && isLostOwner && !matchedFoundItemReceived ? (
+            <>
+              <p className="label text-white/60">COLLECTION PENDING</p>
+              <h2 className="mt-4 text-2xl font-bold tracking-[-.04em]">Awaiting Physical Deposit</h2>
+              <p className="mt-4 text-sm leading-6 text-white/60">
+                Your match has been approved. Collection will be available once Campus Security receives the physical item.
+              </p>
+            </>
+          ) : match?.status === 'APPROVED' && isLostOwner && keyExpired ? (
+            <>
+              <p className="label text-white/60">HANDOVER KEY EXPIRED</p>
+              <h2 className="mt-4 text-2xl font-bold tracking-[-.04em]">Contact Campus Security</h2>
+              <p className="mt-4 text-sm leading-6 text-white/60">
+                The backend reports that the handover key has expired. Campus Security must reissue a key before collection.
+              </p>
+            </>
+          ) : match?.status === 'COMPLETED' ? (
+            <>
+              <p className="label text-white/60">HANDOVER COMPLETED</p>
+              <h2 className="mt-4 text-2xl font-bold tracking-[-.04em]">Item Handover Completed</h2>
+              <p className="mt-4 text-sm leading-6 text-white/60">The handover has been completed.</p>
             </>
           ) : isPendingSubmission ? (
             <>
@@ -121,7 +162,7 @@ export const ItemDetailPage: React.FC<ItemDetailPageProps> = ({ item, match }) =
                 Hand Over Item to Desk
               </h2>
               <p className="mt-4 text-sm leading-6 text-white/60">
-                Bring this item to the Central Security Office (Block 29 Room 102) during operating hours to lodge it into verified campus custody.
+                Bring this item to the Campus Security Office during operating hours to lodge it into verified campus custody.
               </p>
             </>
           ) : (
@@ -137,7 +178,7 @@ export const ItemDetailPage: React.FC<ItemDetailPageProps> = ({ item, match }) =
           )}
 
           <div className="mt-6 pt-6 border-t border-white/20 text-xs text-white/60 font-mono-numbers leading-relaxed">
-            Central Security Desk (Block 29 Room 102) · Mon–Sat 08:00–18:00
+            Campus Security Desk
           </div>
         </aside>
       </div>

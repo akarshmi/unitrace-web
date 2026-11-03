@@ -115,56 +115,7 @@ export const AppHeader: React.FC<AppHeaderProps> = ({
                   </button>
                 )}
               </>
-            ) : (
-              <>
-                <Link
-                  href="/desk"
-                  className={`py-1 border-b-2 transition-colors ${
-                    currentPath === '/desk'
-                      ? 'border-black dark:border-white text-black dark:text-white'
-                      : 'border-transparent text-[var(--muted)] hover:text-black dark:hover:text-white'
-                  }`}
-                >
-                  Dashboard
-                </Link>
-                <Link
-                  href="/desk/submissions"
-                  className={`py-1 border-b-2 transition-colors ${
-                    currentPath === '/desk/submissions'
-                      ? 'border-black dark:border-white text-black dark:text-white'
-                      : 'border-transparent text-[var(--muted)] hover:text-black dark:hover:text-white'
-                  }`}
-                >
-                  Submissions
-                </Link>
-                <Link
-                  href="/desk/matches"
-                  className={`py-1 border-b-2 transition-colors ${
-                    currentPath === '/desk/matches'
-                      ? 'border-black dark:border-white text-black dark:text-white'
-                      : 'border-transparent text-[var(--muted)] hover:text-black dark:hover:text-white'
-                  }`}
-                >
-                  Moderation
-                </Link>
-                <Link
-                  href="/desk/handovers"
-                  className={`py-1 border-b-2 transition-colors ${
-                    currentPath === '/desk/handovers'
-                      ? 'border-black dark:border-white text-black dark:text-white'
-                      : 'border-transparent text-[var(--muted)] hover:text-black dark:hover:text-white'
-                  }`}
-                >
-                  Handovers
-                </Link>
-                <button
-                  onClick={() => onSwitchPortal('student')}
-                  className="py-1 border-b-2 border-transparent text-[var(--muted)] hover:text-black dark:hover:text-white cursor-pointer"
-                >
-                  ← Student Portal
-                </button>
-              </>
-            )}
+            ) : null}
           </nav>
         )}
 
@@ -353,47 +304,7 @@ export const AppHeader: React.FC<AppHeaderProps> = ({
                   </button>
                 )}
               </>
-            ) : (
-              <>
-                <button
-                  onClick={() => handleMobileNav('/desk')}
-                  className="w-full p-4 flex items-center justify-between text-left"
-                >
-                  <span>Desk Dashboard</span>
-                  <span>→</span>
-                </button>
-                <button
-                  onClick={() => handleMobileNav('/desk/submissions')}
-                  className="w-full p-4 flex items-center justify-between text-left"
-                >
-                  <span>Submissions Intake</span>
-                  <span>→</span>
-                </button>
-                <button
-                  onClick={() => handleMobileNav('/desk/matches')}
-                  className="w-full p-4 flex items-center justify-between text-left"
-                >
-                  <span>Match Moderation</span>
-                  <span>→</span>
-                </button>
-                <button
-                  onClick={() => handleMobileNav('/desk/handovers')}
-                  className="w-full p-4 flex items-center justify-between text-left"
-                >
-                  <span>Handover Terminal</span>
-                  <span>→</span>
-                </button>
-                <button
-                  onClick={() => {
-                    setMobileMenuOpen(false);
-                    onSwitchPortal('student');
-                  }}
-                  className="w-full p-4 flex items-center justify-between text-left bg-black text-white dark:bg-white dark:text-black font-bold"
-                >
-                  <span>← Return to Student Portal</span>
-                </button>
-              </>
-            )}
+            ) : null}
           </div>
 
           {/* Quick Actions Footer */}

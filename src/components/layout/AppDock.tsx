@@ -41,7 +41,7 @@ export const AppDock: React.FC<AppDockProps> = ({
 
   const isStaff = currentUser.role === 'MODERATOR' || currentUser.role === 'ADMIN';
 
-  const items: DockItemData[] = [
+  const studentItems: DockItemData[] = [
     {
       icon: <LayoutDashboard className="w-5 h-5" />,
       label: 'Overview',
@@ -103,12 +103,60 @@ export const AppDock: React.FC<AppDockProps> = ({
       { separator: true },
       {
         icon: <Shield className="w-5 h-5" />,
-        label: activePortal === 'desk' ? 'Student View' : 'Desk Terminal',
-        active: activePortal === 'desk',
-        onClick: () => navigate(activePortal === 'desk' ? '/app' : '/desk'),
+        label: 'Desk Portal',
+        active: false,
+        onClick: () => navigate('/desk'),
       }
     ] : [])
   ];
+
+  const deskItems: DockItemData[] = [
+    {
+      icon: <LayoutDashboard className="w-5 h-5" />,
+      label: 'Desk Overview',
+      active: currentPath === '/desk',
+      onClick: () => navigate('/desk'),
+    },
+    {
+      icon: <Layers className="w-5 h-5" />,
+      label: 'Master Ledger',
+      active: currentPath === '/desk/items',
+      onClick: () => navigate('/desk/items'),
+    },
+    {
+      icon: <PlusSquare className="w-5 h-5" />,
+      label: 'Physical Intake',
+      active: currentPath === '/desk/submissions',
+      onClick: () => navigate('/desk/submissions'),
+    },
+    {
+      icon: <Sparkles className="w-5 h-5" />,
+      label: 'Match Queue',
+      active: currentPath === '/desk/matches' || currentPath.startsWith('/desk/matches/'),
+      onClick: () => navigate('/desk/matches'),
+    },
+    {
+      icon: <Search className="w-5 h-5" />,
+      label: 'Handover Terminal',
+      active: currentPath === '/desk/handovers' || currentPath.startsWith('/desk/handovers/'),
+      onClick: () => navigate('/desk/handovers'),
+    },
+    { separator: true },
+    {
+      icon: isDarkMode ? <Sun className="w-5 h-5" /> : <Moon className="w-5 h-5" />,
+      label: isDarkMode ? 'Light Mode' : 'Dark Mode',
+      onClick: onToggleTheme,
+    },
+    { separator: true },
+    {
+      icon: <Shield className="w-5 h-5" />,
+      label: 'Student Portal',
+      active: false,
+      onClick: () => navigate('/app'),
+    }
+  ];
+
+  const items = activePortal === 'desk' ? deskItems : studentItems;
 
   return (
     <Dock

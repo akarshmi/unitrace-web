@@ -1,220 +1,154 @@
-import React, { useState } from 'react';
-import { Match, MatchStatus, User } from '../../types';
-import { StatusBadge } from '../ui/StatusBadge';
-import { 
-  GitCompare, 
-  ArrowRight 
-} from 'lucide-react';
+import React, { useEffect, useState } from 'react';
+import { DeskMatch } from '../../lib/api/adapters';
+import { BackendDeskItemView, BackendMatchStatus } from '../../lib/api/backend.types';
+import { deskApi } from '../../lib/api/desk.api';
+import { PageHeader, PortalShell, ActionLink, Link } from '../portal-shell';
 
 interface MatchModerationQueueProps {
-  matches: Match[];
-  currentUser: User;
-  onOpenMatchModal: (match: Match) => void;
-  onRefreshData: () => void;
+  onOpenMatchModal: (matchId: string) => void;
 }
 
+const STATUSES: BackendMatchStatus[] = ['PENDING', 'APPROVED', 'REJECTED', 'COMPLETED', 'EXPIRED'];
+
 export const MatchModerationQueue: React.FC<MatchModerationQueueProps> = ({
-  matches,
   onOpenMatchModal,
 }) => {
-  const [statusFilter, setStatusFilter] = useState<'ALL' | MatchStatus>('PENDING_REVIEW');
+  const [statusFilter, setStatusFilter] = useState<BackendMatchStatus>('PENDING');
+  const [matches, setMatches] = useState<DeskMatch[]>([]);
+  const [page, setPage] = useState(0);
+  const [totalPages, setTotalPages] = useState(0);
+  const [totalElements, setTotalElements] = useState(0);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
-  const filteredMatches = matches.filter(m => {
-    if (statusFilter === 'ALL') return true;
-    return m.status === statusFilter;
-  });
+  useEffect(() => {
+    let active = true;
+    setLoading(true);
+    setError(null);
+    deskApi.getMatches(statusFilter, page)
+      .then(result => {
+        if (!active) return;
+        setMatches(result.content);
+        setTotalPages(result.totalPages);
+        setTotalElements(result.totalElements);
+      })
+      .catch(reason => {
+        if (active) setError(reason instanceof Error ? reason.message : 'Unable to load the moderation queue.');
+      })
+      .finally(() => {
+        if (active) setLoading(false);
+      });
+    return () => {
+      active = false;
+    };
+  }, [statusFilter, page]);
 
-  const counts = {
-    PENDING_REVIEW: matches.filter(m => m.status === 'PENDING_REVIEW').length,
-    APPROVED: matches.filter(m => m.status === 'APPROVED').length,
-    CLAIMED: matches.filter(m => m.status === 'CLAIMED').length,
+  const selectStatus = (status: BackendMatchStatus) => {
+    setStatusFilter(status);
+    setPage(0);
   };
 
   return (
-    <div className="space-y-6">
-      {/* Header */}
-      <div className="border-b-2 border-black dark:border-neutral-800 pb-4 flex flex-col sm:flex-row sm:items-end justify-between gap-4">
-        <div>
-          <div className="text-xs font-bold uppercase tracking-[0.14em] text-[var(--navy)] dark:text-blue-400 font-mono-numbers mb-1">
-            Section // 04 · Moderation Gate
+    <PortalShell>
+      <PageHeader
+        eyebrow="CAMPUS SECURITY DESK / MODERATION"
+        title="MATCH QUEUE."
+        copy="Review candidate pairs surfaced by AI matching before authorizing one-time collection keys."
+        action={
+          <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
+            <ActionLink href="/desk/handovers" className="w-full sm:w-auto text-center">Handover Terminal</ActionLink>
+            <Link href="/desk/items" className="border-2 border-black dark:border-white px-5 py-3 text-xs font-bold uppercase tracking-[.12em] text-black dark:text-white hover:bg-black hover:text-white dark:hover:bg-white dark:hover:text-black transition-colors w-full sm:w-auto text-center">
+              Master Ledger
+            </Link>
           </div>
-          <h1 className="text-2xl sm:text-3xl font-extrabold uppercase tracking-tight text-black dark:text-white">
-            Match Moderation Queue
-          </h1>
-          <p className="text-xs text-[var(--muted)] mt-1">
-            Review candidate pairs surfaced by AI matching before authorizing one-time collection keys.
-          </p>
-        </div>
+        }
+      />
 
-        <div className="text-xs font-mono-numbers text-[var(--muted)]">
-          Pending Action: <strong className="text-black dark:text-white">{counts.PENDING_REVIEW}</strong>
-        </div>
-      </div>
-
-      {/* Filter Tabs */}
-      <div className="flex flex-wrap items-center gap-1 border-2 border-black dark:border-neutral-800 bg-[var(--surface)] dark:bg-slate-900 p-1">
-        <button
-          onClick={() => setStatusFilter('PENDING_REVIEW')}
-          className={`px-3 py-1.5 text-xs font-bold uppercase tracking-wider transition-colors cursor-pointer flex items-center gap-1.5 ${
-            statusFilter === 'PENDING_REVIEW'
-              ? 'bg-[var(--navy)] text-white'
-              : 'bg-transparent text-black dark:text-white hover:bg-neutral-200'
-          }`}
-        >
-          <span>Pending Review</span>
-          <span className="font-mono-numbers text-[10px]">({counts.PENDING_REVIEW})</span>
-        </button>
-
-        <button
-          onClick={() => setStatusFilter('APPROVED')}
-          className={`px-3 py-1.5 text-xs font-bold uppercase tracking-wider transition-colors cursor-pointer flex items-center gap-1.5 ${
-            statusFilter === 'APPROVED'
-              ? 'bg-black text-white'
-              : 'bg-transparent text-black dark:text-white hover:bg-neutral-200'
-          }`}
-        >
-          <span>Approved for Collection</span>
-          <span className="font-mono-numbers text-[10px]">({counts.APPROVED})</span>
-        </button>
-
-        <button
-          onClick={() => setStatusFilter('CLAIMED')}
-          className={`px-3 py-1.5 text-xs font-bold uppercase tracking-wider transition-colors cursor-pointer flex items-center gap-1.5 ${
-            statusFilter === 'CLAIMED'
-              ? 'bg-black text-white'
-              : 'bg-transparent text-black dark:text-white hover:bg-neutral-200'
-          }`}
-        >
-          <span>Claimed</span>
-          <span className="font-mono-numbers text-[10px]">({counts.CLAIMED})</span>
-        </button>
-
-        <button
-          onClick={() => setStatusFilter('ALL')}
-          className={`px-3 py-1.5 text-xs font-bold uppercase tracking-wider transition-colors cursor-pointer flex items-center gap-1.5 ${
-            statusFilter === 'ALL'
-              ? 'bg-black text-white'
-              : 'bg-transparent text-black dark:text-white hover:bg-neutral-200'
-          }`}
-        >
-          <span>All ({matches.length})</span>
-        </button>
-      </div>
-
-      {/* Match Cards List */}
-      {filteredMatches.length === 0 ? (
-        <div className="border-2 border-black dark:border-neutral-800 p-12 text-center bg-white dark:bg-[#0B1422]">
-          <GitCompare className="w-8 h-8 text-[var(--navy)] mx-auto mb-2" />
-          <h3 className="text-sm font-bold uppercase tracking-wider text-black dark:text-white">
-            No matches in this view
-          </h3>
-          <p className="text-xs text-[var(--muted)] mt-1">
-            New candidate matches will appear here as students report items.
-          </p>
-        </div>
-      ) : (
-        <div className="space-y-4">
-          {filteredMatches.map(match => (
-            <div
-              key={match.id}
-              className="border-2 border-black dark:border-neutral-700 bg-white dark:bg-[#0B1422] p-6 space-y-4"
+      <div className="py-4 sm:py-6 space-y-6">
+        <div className="flex gap-4 sm:gap-6 border-b-2 border-black dark:border-neutral-800 overflow-x-auto whitespace-nowrap -mx-4 px-4 sm:mx-0 sm:px-0 scrollbar-none">
+          {STATUSES.map(status => (
+            <button
+              key={status}
+              onClick={() => selectStatus(status)}
+              className={`pb-3 sm:pb-4 text-xs font-bold uppercase tracking-[.12em] cursor-pointer transition-colors -mb-[2px] ${
+                statusFilter === status
+                  ? 'border-b-4 border-black dark:border-white text-black dark:text-white'
+                  : 'border-b-4 border-transparent text-[var(--muted)] hover:text-black dark:hover:text-white'
+              }`}
             >
-              {/* Header */}
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b-2 border-black dark:border-neutral-800 pb-3">
-                <div className="flex items-center gap-3">
-                  <span className="text-xs font-mono-numbers font-bold text-black dark:text-white">
-                    PAIR REF: {match.id}
-                  </span>
-                  <span aria-hidden="true" className="text-neutral-400">·</span>
-                  <span className="text-xs font-mono-numbers text-[var(--muted)]">
-                    Date: {match.createdAt.slice(0, 10)}
-                  </span>
-                  <span aria-hidden="true" className="text-neutral-400">·</span>
-                  <StatusBadge status={match.status} />
-                </div>
-
-                <div className="flex items-center gap-2">
-                  <span className="text-xs font-mono-numbers text-[var(--muted)]">Confidence:</span>
-                  <span className="text-xs font-bold font-mono-numbers px-2 py-0.5 bg-[var(--navy)] text-white">
-                    {Math.round(match.similarity.finalScore * 100)}% Match
-                  </span>
-                </div>
-              </div>
-
-              {/* Side-by-Side Comparison */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {/* Lost Report */}
-                <div className="p-4 border-2 border-black dark:border-neutral-800 flex items-start gap-4">
-                  <img
-                    src={match.lostItem.imageUrl}
-                    alt="Lost"
-                    referrerPolicy="no-referrer"
-                    className="w-16 h-16 object-cover border border-black shrink-0"
-                  />
-                  <div className="space-y-1">
-                    <div className="text-[10px] font-mono-numbers uppercase text-[var(--muted)] font-bold">
-                      LOST: {match.lostItem.id} · REG: {match.lostItem.reporterRegNo}
-                    </div>
-                    <div className="font-bold text-sm text-black dark:text-white line-clamp-1">
-                      {match.lostItem.title}
-                    </div>
-                    <div className="text-xs text-[var(--muted)] line-clamp-2">
-                      {match.lostItem.description}
-                    </div>
-                    <div className="text-[11px] text-[var(--muted)] font-mono-numbers">
-                      {match.lostItem.location} ({match.lostItem.eventDate})
-                    </div>
-                  </div>
-                </div>
-
-                {/* Found Intake */}
-                <div className="p-4 border-2 border-black dark:border-neutral-800 flex items-start gap-4 bg-[var(--surface)] dark:bg-slate-900/40">
-                  <img
-                    src={match.foundItem.imageUrl}
-                    alt="Found"
-                    referrerPolicy="no-referrer"
-                    className="w-16 h-16 object-cover border border-black shrink-0"
-                  />
-                  <div className="space-y-1">
-                    <div className="text-[10px] font-mono-numbers uppercase text-[var(--navy)] dark:text-blue-400 font-bold">
-                      FOUND: {match.foundItem.id} · {match.foundItem.submissionStatus}
-                    </div>
-                    <div className="font-bold text-sm text-black dark:text-white line-clamp-1">
-                      {match.foundItem.title}
-                    </div>
-                    <div className="text-xs text-[var(--muted)] line-clamp-2">
-                      {match.foundItem.description}
-                    </div>
-                    <div className="text-[11px] text-[var(--muted)] font-mono-numbers">
-                      {match.foundItem.location} ({match.foundItem.eventDate})
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              {/* Similarity Breakdown & Actions */}
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pt-2">
-                <div className="flex items-center gap-4 text-xs font-mono-numbers text-[var(--muted)]">
-                  <span>Visual: <strong className="text-black dark:text-white">{Math.round(match.similarity.imageSimilarity * 100)}%</strong></span>
-                  <span>·</span>
-                  <span>Description: <strong className="text-black dark:text-white">{Math.round(match.similarity.textSimilarity * 100)}%</strong></span>
-                  <span>·</span>
-                  <span>Location: <strong className="text-black dark:text-white">{Math.round(match.similarity.timeSimilarity * 100)}%</strong></span>
-                </div>
-
-                <button
-                  onClick={() => onOpenMatchModal(match)}
-                  className="px-4 py-2 bg-black hover:bg-neutral-800 text-white text-xs font-bold uppercase tracking-[0.12em] transition-colors cursor-pointer flex items-center gap-1.5"
-                >
-                  <span>Review Decision</span>
-                  <ArrowRight className="w-3.5 h-3.5" />
-                </button>
-              </div>
-
-            </div>
+              {status.replace(/_/g, ' ')}
+            </button>
           ))}
         </div>
-      )}
-    </div>
+
+        {loading ? (
+          <div className="border-2 border-black dark:border-neutral-800 p-8 sm:p-12 text-center text-xs text-[var(--muted)]">
+            Loading moderation queue...
+          </div>
+        ) : error ? (
+          <div className="border-2 border-red-700 p-8 text-center text-xs text-red-700 dark:text-red-300">{error}</div>
+        ) : matches.length === 0 ? (
+          <div className="border-2 border-black dark:border-neutral-800 p-8 sm:p-12 text-center bg-white dark:bg-[#0B1422]">
+            <p className="font-bold uppercase tracking-wider text-black dark:text-white text-base">No matches in this view</p>
+            <p className="mt-2 text-xs text-[var(--muted)] max-w-sm mx-auto">New candidate matches will appear here automatically.</p>
+          </div>
+        ) : (
+          <>
+            <div className="text-xs font-mono-numbers text-[var(--muted)]">
+              {totalElements} record{totalElements === 1 ? '' : 's'} · sorted by final score
+            </div>
+            <div className="space-y-4">
+              {matches.map(match => (
+                <div key={match.id} className="border-2 border-black dark:border-neutral-800 bg-white dark:bg-[#0B1422] p-5 sm:p-6 space-y-4">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b-2 border-black dark:border-neutral-800 pb-3">
+                    <div className="flex items-center gap-2 sm:gap-3 flex-wrap">
+                      <span className="text-xs font-mono-numbers font-bold text-black dark:text-white">REF: {match.id}</span>
+                      <span className="text-neutral-400">·</span>
+                      <span className="text-xs font-mono-numbers text-[var(--muted)]">{match.createdAt.slice(0, 10)}</span>
+                      <span className="border border-black dark:border-white px-2 py-0.5 text-[10px] font-bold uppercase">{match.status}</span>
+                    </div>
+                    <span className="text-xs font-bold font-mono-numbers px-2.5 py-1 bg-black text-white dark:bg-white dark:text-black">
+                      {Math.round(match.finalScore * 100)}% Match
+                    </span>
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    {([
+                      ['LOST ITEM', match.lostItem],
+                      ['FOUND INTAKE', match.foundItem],
+                    ] as [string, BackendDeskItemView][]).map(([label, item]) => (
+                      <div key={label as string} className="p-4 border-2 border-black dark:border-neutral-800 bg-[var(--surface)] dark:bg-[#111F31] space-y-1">
+                        <div className="text-[10px] font-mono-numbers uppercase font-bold text-[var(--muted)]">
+                          {label as string} · REG: {item.reporterRegistrationNumber}
+                        </div>
+                        <p className="font-bold text-sm text-black dark:text-white truncate">{item.title}</p>
+                        <p className="text-xs text-[var(--muted)] line-clamp-2">{item.description}</p>
+                        <p className="text-[11px] text-[var(--muted)] font-mono-numbers pt-1">{item.location}</p>
+                      </div>
+                    ))}
+                  </div>
+
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pt-2">
+                    <div className="flex gap-3 text-xs font-mono-numbers text-[var(--muted)]">
+                      <span>Text: <strong className="text-black dark:text-white">{Math.round(match.textScore * 100)}%</strong></span>
+                      <span>Visual: <strong className="text-black dark:text-white">{match.imageCompared ? `${Math.round(match.imageScore * 100)}%` : 'N/A'}</strong></span>
+                      <span>Time: <strong className="text-black dark:text-white">{Math.round(match.timeScore * 100)}%</strong></span>
+                    </div>
+                    <button onClick={() => onOpenMatchModal(match.id)} className="px-5 py-2.5 bg-black dark:bg-white text-white dark:text-black text-xs font-bold uppercase tracking-[0.12em] cursor-pointer hover:bg-neutral-800 dark:hover:bg-neutral-200 transition-colors">
+                      Review Decision →
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+            <div className="flex items-center justify-between border-t-2 border-black dark:border-neutral-800 pt-4">
+              <button disabled={page === 0} onClick={() => setPage(current => current - 1)} className="px-4 py-2 border-2 border-black dark:border-white text-xs font-bold uppercase disabled:opacity-40">Previous</button>
+              <span className="text-xs font-mono-numbers text-[var(--muted)]">Page {page + 1} of {totalPages}</span>
+              <button disabled={page + 1 >= totalPages} onClick={() => setPage(current => current + 1)} className="px-4 py-2 border-2 border-black dark:border-white text-xs font-bold uppercase disabled:opacity-40">Next</button>
+            </div>
+          </>
+        )}
+      </div>
+    </PortalShell>
   );
 };

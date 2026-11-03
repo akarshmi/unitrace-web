@@ -1,6 +1,13 @@
-import { HandoverLog, ReceptionRecord, User } from '../../types';
+import { HandoverLog } from '../../types';
 import { UniTraceStorage } from '../storage';
 import { apiRequest } from './client';
+import {
+  BackendDeskMatchResponse,
+  BackendItemResponse,
+  BackendMatchStatus,
+  BackendPage,
+} from './backend.types';
+import { DeskMatch, adaptDeskMatch } from './adapters';
 
 export interface DeskStats {
   totalReports: number;
@@ -13,65 +20,71 @@ export interface DeskStats {
   todaySubmissions: number;
 }
 
-export interface PhysicalIntakePayload {
-  itemId: string;
-  itemTitle: string;
-  reporterRegNo: string;
-  intakeCondition: 'MINT' | 'GOOD' | 'WORN' | 'DAMAGED';
-  officerName: string;
-  officerRegNo: string;
-  storageBin: string;
-  notes: string;
-}
-
 export const deskApi = {
+  async getReceivableItems(page = 0, size = 20): Promise<BackendPage<BackendItemResponse>> {
+    return apiRequest<BackendPage<BackendItemResponse>>(
+      `/items?type=FOUND&status=OPEN&page=${page}&size=${size}`
+    );
+  },
+
+  async getMatches(status: BackendMatchStatus, page = 0, size = 20) {
+    const response = await apiRequest<BackendPage<BackendDeskMatchResponse>>(
+      `/desk/matches?status=${status}&page=${page}&size=${size}`
+    );
+    return {
+      ...response,
+      content: response.content.map(adaptDeskMatch),
+    };
+  },
+
+  async getMatch(matchId: string): Promise<DeskMatch> {
+    const response = await apiRequest<BackendDeskMatchResponse>(`/desk/matches/${matchId}`);
+    return adaptDeskMatch(response);
+  },
+
   async getDeskStats(): Promise<DeskStats> {
     return await apiRequest<DeskStats>('/desk/statistics');
   },
 
-  async receivePhysicalItem(payload: PhysicalIntakePayload): Promise<ReceptionRecord> {
-    return await apiRequest<ReceptionRecord>('/desk/submissions/receive', {
+  async receivePhysicalItem(itemId: string): Promise<BackendItemResponse> {
+    return await apiRequest<BackendItemResponse>(`/desk/items/${itemId}/receive`, {
       method: 'POST',
-      body: JSON.stringify(payload),
     });
   },
 
-  async getReceptionHistory(): Promise<ReceptionRecord[]> {
-    return UniTraceStorage.getReceptions();
-  },
-
-  async approveMatch(matchId: string, remarks: string, moderator: User) {
-    return await apiRequest(`/desk/matches/${matchId}/approve`, {
+  async approveMatch(matchId: string, note: string) {
+    const response = await apiRequest<BackendDeskMatchResponse>(`/desk/matches/${matchId}/approve`, {
       method: 'POST',
-      body: JSON.stringify({ remarks }),
+      body: JSON.stringify({ note }),
     });
+    return adaptDeskMatch(response);
   },
 
-  async rejectMatch(matchId: string, remarks: string, moderator: User) {
-    return await apiRequest(`/desk/matches/${matchId}/reject`, {
+  async rejectMatch(matchId: string, note: string) {
+    const response = await apiRequest<BackendDeskMatchResponse>(`/desk/matches/${matchId}/reject`, {
       method: 'POST',
-      body: JSON.stringify({ remarks }),
+      body: JSON.stringify({ note }),
     });
+    return adaptDeskMatch(response);
   },
 
-  async verifyHandover(
-    matchId: string,
-    claimantRegNo: string,
-    keyEntered: string,
-    officer: User,
-    deskRemarks: string
-  ) {
-    return await apiRequest<{ success: boolean; message: string; remainingAttempts?: number; isLocked?: boolean }>(
-      `/desk/handovers/${matchId}/verify`,
+  async completeHandover(matchId: string, handoverKey: string, verifiedRegistrationNumber: number) {
+    const response = await apiRequest<BackendDeskMatchResponse>(
+      `/desk/matches/${matchId}/complete`,
       {
         method: 'POST',
-        body: JSON.stringify({ claimantRegNo, keyEntered, deskRemarks }),
+        body: JSON.stringify({ handoverKey, verifiedRegistrationNumber }),
       }
     );
+    return adaptDeskMatch(response);
   },
 
   async reissueHandoverKey(matchId: string) {
-    return UniTraceStorage.reissueHandoverKey(matchId);
+    const response = await apiRequest<BackendDeskMatchResponse>(
+      `/desk/matches/${matchId}/reissue-key`,
+      { method: 'POST' }
+    );
+    return adaptDeskMatch(response);
   },
 
   async getHandoverLogs(): Promise<HandoverLog[]> {

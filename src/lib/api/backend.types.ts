@@ -89,17 +89,65 @@ export interface BackendMatchItemView {
   status: ItemStatus;
   eventFrom: string | null;
   eventTo: string | null;
-  receivedAtDesk: boolean;
+  createdAt: string;
+  deskReceivedAt: string | null;
   dropOffDeadline: string | null;
 }
 
 export interface BackendStudentMatchResponse {
   id: string;
-  status: string;
+  status: BackendMatchStatus;
   yourRole: 'LOST_OWNER' | 'FOUND_OWNER';
   confidencePercent: number;
+  finalScore: number;
+  textScore: number;
+  imageCompared: boolean;
+  imageScore: number;
+  timeScore: number;
+  yourItem: BackendMatchItemView;
   otherItem: BackendMatchItemView;
+  handoverKeyIssued: boolean;
   handoverKeyExpiresAt: string | null;
   nextStep: string;
   createdAt: string;
+  reviewedAt: string | null;
+  completedAt: string | null;
+}
+
+export type BackendMatchStatus = 'PENDING' | 'APPROVED' | 'REJECTED' | 'COMPLETED' | 'EXPIRED';
+
+export interface BackendDeskItemView {
+  id: string;
+  type: ItemType;
+  title: string;
+  description: string;
+  location: string;
+  imageUrl: string;
+  status: ItemStatus;
+  eventFrom: string | null;
+  eventTo: string | null;
+  createdAt: string;
+  dropOffDeadline: string | null;
+  deskReceivedAt: string | null;
+  reporterName: string;
+  reporterRegistrationNumber: number;
+  reporterUniEmail: string;
+}
+
+export interface BackendDeskMatchResponse {
+  id: string;
+  status: BackendMatchStatus;
+  finalScore: number;
+  textScore: number;
+  imageCompared: boolean;
+  imageScore: number;
+  timeScore: number;
+  lostItem: BackendDeskItemView;
+  foundItem: BackendDeskItemView;
+  createdAt: string;
+  reviewedAt: string | null;
+  reviewNote: string | null;
+  handoverKeyExpiresAt: string | null;
+  handoverFailedAttempts: number;
+  completedAt: string | null;
 }
